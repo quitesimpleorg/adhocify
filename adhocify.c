@@ -99,7 +99,7 @@ char *find_ifd_path(int ifd)
 bool is_ignored(const char *str)
 {
 	for(struct ignorelist *l = ignorelist_head; l != NULL; l = l->next)
-		if(fnmatch(str, l->ignore, 0) == 0)
+		if(fnmatch(l->ignore, str, 0) == 0)
 			return true;
 	return false;
 }
@@ -341,6 +341,8 @@ void handle_event(struct inotify_event *event, uint32_t mask, char *prog, const 
 			logerror("Could not get absoulte path for event. Watch descriptor %i\n", event->wd);
 			exit(EXIT_FAILURE);
 		}
+		
+		if(is_ignored(eventfile_abspath)) return;
 
 		logwrite("Starting execution of child %s\n", prog);
 		bool r = run(prog, eventfile_abspath, logfile, event->mask, noappend);
@@ -378,7 +380,7 @@ int main(int argc, char **argv)
 
 	signal(SIGCHLD, SIG_IGN);
 
-	while((option = getopt(argc, argv, "absdo:w:m:l:")) != -1)
+	while((option = getopt(argc, argv, "absdo:w:m:l:i:")) != -1)
 	{
 		switch(option)
 		{
