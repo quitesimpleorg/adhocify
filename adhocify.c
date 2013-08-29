@@ -20,16 +20,16 @@
 #define BUF_SIZE (sizeof(struct inotify_event) * 1024) + 255
 #define STREQ(s1,s2) ( strcmp(s1,s2) == 0 )
 
-struct ifdLookup
+struct watchlistentry
 {
 	int ifd;
 	char *path;
 	bool isdir;
-	struct ifdLookup *next;
+	struct watchlistentry *next;
 };
 
-struct ifdLookup *lkp_head = NULL;
-struct ifdLookup **lookup = &lkp_head;
+struct watchlistentry *watchlist_head = NULL;
+struct watchlistentry **watchlist = &watchlist_head;
 
 
 
@@ -81,28 +81,46 @@ char *xrealpath(const char *path, char *resolved_path)
 
 char *ndirname(const char *path)
 {
-	if(path == NULL) return xstrdup("."); 
+	if(path == NULL) 
+		return xstrdup("."); 
 	char *c = strdupa(path);
 	return xstrdup(dirname(c));
 }
 
 char *find_ifd_path(int ifd)
 {
-	for(struct ifdLookup *lkp = lkp_head; lkp != NULL; lkp = lkp->next)
+	for(struct watchlistentry *lkp = watchlist_head; lkp != NULL; lkp = lkp->next)
 		if(lkp->ifd == ifd) 
 			return lkp->path;
 	return NULL;
 }
 
-
-
-bool is_ignored(const char *str)
+bool is_ignored(const char *filename)
 {
 	for(struct ignorelist *l = ignorelist_head; l != NULL; l = l->next)
-		if(fnmatch(l->ignore, str, 0) == 0)
+		if(fnmatch(l->ignore, filename, 0) == 0)
 			return true;
 	return false;
 }
+
+bool path_is_directory(const char *path)
+{
+	struct stat sb;
+	int r = stat(path, &sb);
+	if(r == -1)
+	{
+		perror("stat");
+		return false;
+	}
+	return S_ISDIR(sb.st_mode);
+}
+
+static inline bool path_exists(const char *path)
+{
+	struct stat sb;
+	return stat(path, &sb) != -1; 
+}
+
 
 void add_ignore_list(const char *str)
 {
@@ -138,31 +156,21 @@ void logerror(const char *format, ...)
 
 }
 
-void queue_watch(char *pathname)
+void watchqueue_addpath(const char *pathname)
 {
-	struct stat sb;
-	int s = stat(pathname, &sb);
-	if(s == -1)
-	{
-		perror("stat");
-		exit(EXIT_FAILURE);
-	}
-	*lookup = xmalloc(sizeof(struct ifdLookup));
-	struct ifdLookup *lkp = *lookup;
+	*watchlist = xmalloc(sizeof(struct watchlistentry));
+	struct watchlistentry *e = *watchlist;
 	char *path = xrealpath(pathname, NULL);
-
-	lkp->ifd = 0;
-	lkp->path = path;
-	lkp->isdir = S_ISDIR(sb.st_mode);
-	lkp->next = NULL;
-	lookup = &lkp->next;
+	e->ifd = 0;
+	e->path = path;
+	e->isdir = path_is_directory(pathname);
+	e->next = NULL;
+	watchlist= &e->next;
 }
 
 void start_watches(int fd, uint32_t mask)
 {
-
-	struct ifdLookup *lkp = lkp_head;
-	for(; lkp != NULL; lkp = lkp->next)
+	for(struct watchlistentry *lkp = watchlist_head; lkp != NULL; lkp = lkp->next)
 	{
 		int ret = inotify_add_watch(fd, lkp->path, mask);
 		if(ret == -1) 
@@ -198,16 +206,14 @@ bool redirect_stdout(const char *outfile)
 //outfile: to log output of the program to be executed
 //mask: occured adhocify event
 //noappend: supply the adhocify event as an environment variable to the program to be executed
-bool run( char *path, char *eventfile, const char *outfile, uint32_t mask, bool noappend)
+bool run(const char *path, const char *eventfile, const char *outfile, uint32_t mask, bool noappend)
 {
-	char *envvar = NULL;
-	struct stat sb;
-	if(stat(path, &sb) == -1) 
-	{ 
-		perror("stat"); 
-		return false; 
-	} 
-
+	if(! path_exists(path))
+	{
+		perror("path_exists");
+		return false;
+	}
+	
 	pid_t pid = fork();
 	if(pid == 0)
 	{
@@ -217,10 +223,10 @@ bool run( char *path, char *eventfile, const char *outfile, uint32_t mask, bool 
 				return false;	
 		}
 
-		char *argv0 = memrchr(path, '/', strlen(path));
+		const char *argv0 = memrchr(path, '/', strlen(path));
 		argv0 = ( argv0 == NULL ) ? path : argv0+1;
 
-		envvar = xmalloc(19 * sizeof(char));
+		char *envvar = xmalloc(19 * sizeof(char));
 		sprintf(envvar, "adhocifyevent=%"PRIu32, mask); 
 		putenv(envvar);
 
@@ -273,22 +279,21 @@ uint32_t nameToMask(char *name)
 
 }
 
-void check_forkbomb(char *dir_log, char *dir_prog)
+void check_forkbomb(const char *path_logfile, const char *path_prog)
 {
-	dir_log = ndirname(dir_log);
-	dir_prog = ndirname(dir_prog);	
+	char *dir_log = ndirname(path_logfile);
+	char *dir_prog = ndirname(path_prog);	
 
-	struct ifdLookup *lkp = lkp_head;
+	struct watchlistentry *lkp = watchlist_head;
 	while(lkp)
 	{
 		if(lkp->isdir)
 		{
 
 			char *dir_lkpPath = lkp->path;
-			if( STREQ(dir_lkpPath, dir_log)
-					|| STREQ(dir_lkpPath, dir_prog))
+			if( STREQ(dir_lkpPath, dir_log)	|| STREQ(dir_lkpPath, dir_prog) )
 			{
-				logerror("Don't place your logfiles or prog in a directory you are watching for events\n");
+				logerror("Don't place your logfiles or prog in a directory you are watching for events. Pass -b to bypass this check.\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -308,7 +313,7 @@ void queue_watches_from_stdin()
 	while((r = getline(&line, &n, stdin)) != -1)
 	{
 		if(line[r-1] == '\n') line[r-1] = 0;
-		queue_watch(line);
+		watchqueue_addpath(line);
 	}
 }
 
@@ -331,7 +336,7 @@ char *get_eventfile_abspath(struct inotify_event *event)
 }
 
 
-void handle_event(struct inotify_event *event, uint32_t mask, char *prog, const char *logfile,  bool noappend)
+void handle_event(struct inotify_event *event, uint32_t mask, const char *prog, const char *logfile,  bool noappend)
 {
 	if(event->mask & mask) 
 	{	
@@ -342,7 +347,8 @@ void handle_event(struct inotify_event *event, uint32_t mask, char *prog, const 
 			exit(EXIT_FAILURE);
 		}
 		
-		if(is_ignored(eventfile_abspath)) return;
+		if(is_ignored(eventfile_abspath)) 
+			return;
 
 		logwrite("Starting execution of child %s\n", prog);
 		bool r = run(prog, eventfile_abspath, logfile, event->mask, noappend);
@@ -359,6 +365,25 @@ void handle_event(struct inotify_event *event, uint32_t mask, char *prog, const 
 	}
 }
 
+static inline char *cur_wkdir()
+{
+	return getcwd(NULL,0); 
+}
+
+void print_usage()
+{
+	printf("adhocify [OPTIONS] script\n");
+	
+	printf("-d		daemonize\n");
+	printf("-w 		path -- adds the specified path to the watchlist\n");
+	printf("-o		logfile -- output goes here\n");
+	printf("-m		maskval -- inotify mask value. Can be specified multiple times, will be ORed.\n");
+	printf("-a		if specified, the inotify event which occured won't be passed to the script as an envvar.\n");
+	printf("-q		silent\n");
+	printf("-s		Read the paths which must be added to the watchlist from stdin. Each path in a seperate line\n");
+	printf("-b		Disable fork bomb detection\n");
+	printf("-i 		pattern -- Ignore events on files for which the pattern matches\n");  
+}
 
 int main(int argc, char **argv)
 {
@@ -369,12 +394,12 @@ int main(int argc, char **argv)
 	bool forkbombcheck=true;
 	int option;
 	int ifd;
-	char *logfile = NULL;
+	char *path_logfile = NULL;
 	char *watchpath = NULL;
 
 	if(argc < 2) 
 	{ 
-		logwrite("Insert usage text here\n"); 
+		print_usage();
 		exit(EXIT_FAILURE);
 	}
 
@@ -392,7 +417,7 @@ int main(int argc, char **argv)
 				}
 				break;
 			case 'o':
-				logfile = optarg;
+				path_logfile = optarg;
 				break;
 			case 'm':
 				optmask = nameToMask(optarg);
@@ -404,7 +429,7 @@ int main(int argc, char **argv)
 				break;
 			case 'w':
 				watchpath = optarg;
-				queue_watch(watchpath);
+				watchqueue_addpath(watchpath);
 				break;
 			case 'a':
 				noappend=true;
@@ -421,24 +446,25 @@ int main(int argc, char **argv)
 			case 'q':
 				silent=true;
 				break;
+			case 'h':
+				print_usage();
+				exit(EXIT_SUCCESS);
+				break;
 		}	
 	}
 
-	if(lkp_head == NULL)
+	if(watchlist_head == NULL)
 	{ 
-		watchpath = getcwd(NULL,0); 
-		if(watchpath == NULL) 
-		{ 
-			perror("getcwd"); 
-			exit(EXIT_FAILURE);
-		} 
-		queue_watch(watchpath);
+		watchpath = cur_wkdir();
+		watchqueue_addpath(watchpath);
 	}
 
 	if(fromstdin)
 		queue_watches_from_stdin();
 
-	if(mask == 0) mask |= IN_CLOSE_WRITE;
+	if(mask == 0) 
+		mask |= IN_CLOSE_WRITE;
+	
 	if(optind >= argc) 
 	{ 
 		logerror("missing prog/script path\n");
@@ -447,14 +473,14 @@ int main(int argc, char **argv)
 
 	char *prog = argv[optind];
 
-	if(logfile)
-		logfile = xrealpath(logfile, NULL);
+	if(path_logfile)
+		path_logfile = xrealpath(path_logfile, NULL);
 
 
 	if(forkbombcheck)
 	{
 		char *path_prog = xrealpath(prog, NULL);
-		check_forkbomb(logfile, path_prog);
+		check_forkbomb(path_logfile, path_prog);
 	}
 
 	ifd = inotify_init();
@@ -463,25 +489,26 @@ int main(int argc, char **argv)
 	while(1) 
 	{
 		int len;
-		int i =0;
+		int offset =0;
 		char buf[BUF_SIZE];
 		len = read(ifd, buf, BUF_SIZE);
 		if(len == -1) 
 		{
-			if(errno == EINTR) continue;
+			if(errno == EINTR) 
+				continue;
 			perror("read");
 			exit(EXIT_FAILURE);
 		}
 
-		while(i < len)
+		while(offset < len)
 		{
 
-			struct inotify_event *event = (struct inotify_event *)&buf[i];
+			struct inotify_event *event = (struct inotify_event *)&buf[offset];
 
-			handle_event(event, mask, prog, logfile, noappend);
+			handle_event(event, mask, prog, path_logfile, noappend);
 
 
-			i+=sizeof(struct inotify_event) + event->len;
+			offset+=sizeof(struct inotify_event) + event->len;
 		}
 	}              
 }
