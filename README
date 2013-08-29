@@ -1,0 +1,38 @@
+What is adhocify?
+=================
+adhocify is a very simple and useful tool. 
+
+adhocify uses inotify to watch for file system events. Those events are
+specified by the user. Once an event occurs, it launches a script supplied 
+by the user, passing the path of the file the event occured on as an argument. 
+
+
+How do I use adhocify?
+======================
+Launch adhocify without any arguments and you will get the options listed.
+
+Examples:
+./adhocify -w /tmp/ /home/core/myscript.sh
+------------------------------------------
+Watches for IN_CLOSE_WRITE events in /tmp/, launches script /home/core/myscript.sh
+
+./adhocify -w /tmp/ -w /var/run /home/core/myscript.sh
+------------------------------------------------------
+Same as above, but also watches /var/run
+
+./adhocify /home/core/myscript.sh
+---------------------------------
+Watches for IN_CLOSE_WRITE events in the current directory, launches script 
+/home/core/myscript.
+
+./adhocify -m IN_OPEN -w /tmp /home/core/myscript.sh
+----------------------------------------------------
+Watches for IN_OPEN events in /tmp/, launches script /home/core/myscript.sh
+
+./adhocify -w /tmp -i *.txt /home/core/myscript.sh
+--------------------------------------------------
+... ignores *.txt files ....
+
+
+
+ 
