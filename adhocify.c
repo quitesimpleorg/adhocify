@@ -17,6 +17,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <fnmatch.h>
+#include <getopt.h>
 #define BUF_SIZE (sizeof(struct inotify_event) * 1024) + 255
 #define STREQ(s1,s2) ( strcmp(s1,s2) == 0 )
 
@@ -312,7 +313,8 @@ void queue_watches_from_stdin()
 	ssize_t r;
 	while((r = getline(&line, &n, stdin)) != -1)
 	{
-		if(line[r-1] == '\n') line[r-1] = 0;
+		if(line[r-1] == '\n') 
+			line[r-1] = 0;
 		watchqueue_addpath(line);
 	}
 }
@@ -374,16 +376,32 @@ void print_usage()
 {
 	printf("adhocify [OPTIONS] script\n");
 	
-	printf("-d		daemonize\n");
-	printf("-w 		path -- adds the specified path to the watchlist\n");
-	printf("-o		logfile -- output goes here\n");
-	printf("-m		maskval -- inotify mask value. Can be specified multiple times, will be ORed.\n");
-	printf("-a		if specified, the inotify event which occured won't be passed to the script as an envvar.\n");
-	printf("-q		silent\n");
-	printf("-s		Read the paths which must be added to the watchlist from stdin. Each path in a seperate line\n");
-	printf("-b		Disable fork bomb detection\n");
-	printf("-i 		pattern -- Ignore events on files for which the pattern matches\n");  
+	printf("--daemon, -d		daemonize\n");
+	printf("--path, -w 		path -- adds the specified path to the watchlist\n");
+	printf("--logfile, -o		logfile -- output goes here\n");
+	printf("--mask, -m		maskval -- inotify mask value. Can be specified multiple times, will be ORed.\n");
+	printf("--no-env, -a		if specified, the inotify event which occured won't be passed to the script as an envvar.\n");
+	printf("--silent, -q		silent\n");
+	printf("--stdin, -s		Read the paths which must be added to the watchlist from stdin. Each path in a seperate line\n");
+	printf("--no-forkbomb-check, -b		Disable fork bomb detection\n");
+	printf("--ignore, -i 		pattern -- Ignore events on files for which the pattern matches\n");  
 }
+
+static struct option long_options[] = 
+{
+  { "daemon", no_argument, 0, 'd' },
+  { "logfile", required_argument, 0, 'o' },
+  { "mask", required_argument, 0, 'm' },
+  { "path", required_argument, 0, 'w' },
+  { "no-env", no_argument, 0, 'a' },
+  { "stdin", no_argument, 0, 's' },
+  { "no-forkbomb-check", no_argument, 0, 'b' },
+  { "ignore", required_argument, 0, 'i' },  
+  { "silent", no_argument, 0, 'q' },
+  { "help", no_argument, 0, 'h' }
+};
+
+
 
 int main(int argc, char **argv)
 {
@@ -404,8 +422,8 @@ int main(int argc, char **argv)
 	}
 
 	signal(SIGCHLD, SIG_IGN);
-
-	while((option = getopt(argc, argv, "absdo:w:m:l:i:")) != -1)
+    int option_index;
+	while((option = getopt_long(argc, argv, "absdo:w:m:l:i:", long_options, &option_index)) != -1)
 	{
 		switch(option)
 		{
