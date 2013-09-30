@@ -227,7 +227,7 @@ bool run(const char *path, const char *eventfile, const char *outfile, uint32_t 
 		const char *argv0 = memrchr(path, '/', strlen(path));
 		argv0 = ( argv0 == NULL ) ? path : argv0+1;
 
-		char *envvar = xmalloc(19 * sizeof(char));
+		char envvar[19];
 		sprintf(envvar, "adhocifyevent=%"PRIu32, mask); 
 		putenv(envvar);
 
