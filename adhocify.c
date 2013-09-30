@@ -309,7 +309,7 @@ void check_forkbomb(const char *path_logfile, const char *path_prog)
 void queue_watches_from_stdin()
 {
 	char *line = NULL;
-	size_t n = 0;
+	size_t n = 0; 
 	ssize_t r;
 	while((r = getline(&line, &n, stdin)) != -1)
 	{
@@ -471,14 +471,14 @@ int main(int argc, char **argv)
 		}	
 	}
 
+	if(fromstdin)
+		queue_watches_from_stdin();
+
 	if(watchlist_head == NULL)
 	{ 
 		watchpath = cur_wkdir();
 		watchqueue_addpath(watchpath);
 	}
-
-	if(fromstdin)
-		queue_watches_from_stdin();
 
 	if(mask == 0) 
 		mask |= IN_CLOSE_WRITE;
