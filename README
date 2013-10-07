@@ -4,7 +4,7 @@ adhocify is a very simple and useful tool.
 
 adhocify uses inotify to watch for file system events. Those events are
 specified by the user. Once an event occurs, it launches a script supplied 
-by the user, passing the path of the file the event occured on as an argument. 
+by the user, passing the path of the file the event occurred on as an argument. 
 
 
 How do I use adhocify?
