@@ -1,4 +1,5 @@
 //The author disclaims copyright to this source code. 
+// adhocify at quitesimple period org
 #define  _GNU_SOURCE
 
 #include <stdio.h>
@@ -44,7 +45,13 @@ struct ignorelist *ignorelist_head = NULL;
 struct ignorelist **ignorelist_current = &ignorelist_head;
 
 
-bool silent;
+/* Write once globals */
+bool silent = false;
+bool noappend = false;
+uint32_t mask = 0;
+char *prog = NULL;
+char *path_logfile = NULL;
+
 
 void *xmalloc(size_t size)
 {
@@ -116,10 +123,9 @@ bool path_is_directory(const char *path)
 	return S_ISDIR(sb.st_mode);
 }
 
-static inline bool path_exists(const char *path)
+static inline bool file_exists(const char *path)
 {
-	struct stat sb;
-	return stat(path, &sb) != -1; 
+	return access(path, F_OK) == 0; 
 }
 
 
@@ -202,36 +208,26 @@ bool redirect_stdout(const char *outfile)
 	return true;
 }
 
-//path: file to execute
-//eventfile: path to the file the event occured on 
-//outfile: to log output of the program to be executed
-//mask: occured adhocify event
-//noappend: supply the adhocify event as an environment variable to the program to be executed
-bool run(const char *path, const char *eventfile, const char *outfile, uint32_t mask, bool noappend)
+
+bool run_prog(const char *eventfile,  uint32_t eventmask)
 {
-	if(! path_exists(path))
-	{
-		perror("path_exists");
-		return false;
-	}
-	
 	pid_t pid = fork();
 	if(pid == 0)
 	{
-		if(outfile)
+		if(path_logfile)
 		{
-			if(! redirect_stdout(outfile)) 
+			if(! redirect_stdout(path_logfile)) 
 				return false;	
 		}
 
-		const char *argv0 = memrchr(path, '/', strlen(path));
-		argv0 = ( argv0 == NULL ) ? path : argv0+1;
+		const char *argv0 = memrchr(prog, '/', strlen(prog));
+		argv0 = ( argv0 == NULL ) ? prog : argv0+1;
 
 		char envvar[30];
-		snprintf(envvar, 30, "adhocifyevent=%"PRIu32, mask); 
+		snprintf(envvar, 30, "adhocifyevent=%"PRIu32, eventmask); 
 		putenv(envvar);
 
-		execl(path, argv0, (! noappend) ? eventfile : NULL, NULL);
+		execl(prog, argv0, (! noappend) ? eventfile : NULL, NULL);
 		perror("execlp");
 		return false;
 	}
@@ -338,7 +334,7 @@ char *get_eventfile_abspath(struct inotify_event *event)
 }
 
 
-void handle_event(struct inotify_event *event, uint32_t mask, const char *prog, const char *logfile,  bool noappend)
+void handle_event(struct inotify_event *event)
 {
 	if(event->mask & mask) 
 	{	
@@ -353,7 +349,7 @@ void handle_event(struct inotify_event *event, uint32_t mask, const char *prog, 
 			return;
 
 		logwrite("Starting execution of child %s\n", prog);
-		bool r = run(prog, eventfile_abspath, logfile, event->mask, noappend);
+		bool r = run_prog(eventfile_abspath, event->mask);
 		if(!r) 
 		{
 			logerror("Execution of child %s failed\n", prog);
@@ -367,24 +363,24 @@ void handle_event(struct inotify_event *event, uint32_t mask, const char *prog, 
 	}
 }
 
-static inline char *cur_wkdir()
+static inline char *get_cwd()
 {
 	return getcwd(NULL,0); 
 }
 
 void print_usage()
 {
-	printf("adhocify [OPTIONS] script\n");
+	printf("adhocify [OPTIONS]script\n");
 	
-	printf("--daemon, -d		daemonize\n");
-	printf("--path, -w 		path -- adds the specified path to the watchlist\n");
-	printf("--logfile, -o		logfile -- output goes here\n");
-	printf("--mask, -m		maskval -- inotify mask value. Can be specified multiple times, will be ORed.\n");
-	printf("--no-env, -a		if specified, the inotify event which occured won't be passed to the script as an envvar.\n");
-	printf("--silent, -q		silent\n");
-	printf("--stdin, -s		Read the paths which must be added to the watchlist from stdin. Each path in a seperate line\n");
-	printf("--no-forkbomb-check, -b		Disable fork bomb detection\n");
-	printf("--ignore, -i 		pattern -- Ignore events on files for which the pattern matches\n");  
+	printf("--daemon, -d\t\t\tdaemonize\n");
+	printf("--path, -w\t\t\tpath -- adds the specified path to the watchlist\n");
+	printf("--logfile, -o\t\t\tlogfile -- output goes here\n");
+	printf("--mask, -m\t\t\tmaskval -- inotify mask value. Can be specified multiple times, will be ORed.\n");
+	printf("--no-env, -a\t\t\tif specified, the inotify event which occured won't be passed to the script as an envvar.\n");
+	printf("--silent, -q\t\t\tsilent\n");
+	printf("--stdin, -s\t\t\tRead the paths which must be added to the watchlist from stdin. Each path in a seperate line\n");
+	printf("--no-forkbomb-check, -b\t\tDisable fork bomb detection\n");
+	printf("--ignore, -i\t\t\tpattern -- Ignore events on files for which the pattern matches\n");  
 }
 
 static struct option long_options[] = 
@@ -405,14 +401,11 @@ static struct option long_options[] =
 
 int main(int argc, char **argv)
 {
-	uint32_t mask = 0;
 	uint32_t optmask = 0; 
-	bool noappend=false;
 	bool fromstdin=false;
 	bool forkbombcheck=true;
 	int option;
 	int ifd;
-	char *path_logfile = NULL;
 	char *watchpath = NULL;
 
 	if(argc < 2) 
@@ -476,7 +469,7 @@ int main(int argc, char **argv)
 
 	if(watchlist_head == NULL)
 	{ 
-		watchpath = cur_wkdir();
+		watchpath = get_cwd();
 		watchqueue_addpath(watchpath);
 	}
 
@@ -489,8 +482,13 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE); 
 	}
 
-	char *prog = argv[optind];
-
+	prog = argv[optind];
+	if(! file_exists(prog))
+	{
+		perror("file_exists");
+		return false;
+	}
+	
 	if(path_logfile)
 		path_logfile = xrealpath(path_logfile, NULL);
 
@@ -522,10 +520,7 @@ int main(int argc, char **argv)
 		{
 
 			struct inotify_event *event = (struct inotify_event *)&buf[offset];
-
-			handle_event(event, mask, prog, path_logfile, noappend);
-
-
+			handle_event(event);
 			offset+=sizeof(struct inotify_event) + event->len;
 		}
 	}              
