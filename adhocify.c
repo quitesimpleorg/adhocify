@@ -141,7 +141,8 @@ void add_ignore_list(const char *str)
 
 void logwrite(const char *format, ...)
 {
-	if(silent) return;
+	if(silent) 
+		return;
 	va_list args;
 	va_start(args, format);
 	vfprintf(stdout, format, args);
@@ -241,7 +242,7 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 
 }
 
-uint32_t nameToMask(char *name)
+uint32_t nameToMask(const char *name)
 { 
 	if(STREQ(name, "IN_CLOSE_WRITE"))
 		return IN_CLOSE_WRITE;
@@ -346,8 +347,10 @@ void handle_event(struct inotify_event *event)
 		}
 		
 		if(is_ignored(eventfile_abspath)) 
+		{
+			free(eventfile_abspath);
 			return;
-
+		}
 		logwrite("Starting execution of child %s\n", prog);
 		bool r = run_prog(eventfile_abspath, event->mask);
 		if(!r) 
@@ -402,9 +405,8 @@ static struct option long_options[] =
 int main(int argc, char **argv)
 {
 	uint32_t optmask = 0; 
-	bool fromstdin=false;
-	bool forkbombcheck=true;
-	int option;
+	bool fromstdin = false;
+	bool forkbombcheck = true;
 	int ifd;
 	char *watchpath = NULL;
 
@@ -415,6 +417,8 @@ int main(int argc, char **argv)
 	}
 
 	signal(SIGCHLD, SIG_IGN);
+	
+	int option;
     int option_index;
 	while((option = getopt_long(argc, argv, "absdo:w:m:l:i:", long_options, &option_index)) != -1)
 	{
