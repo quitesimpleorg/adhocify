@@ -1,5 +1,7 @@
-//The author disclaims copyright to this source code. 
-// adhocify at quitesimple period org
+/*The author disclaims copyright to this source code: Public domain. 
+ * Do whatever you want with it.
+ * Contact: adhocify at quitesimple period org 
+*/
 #define  _GNU_SOURCE
 
 #include <stdio.h>
@@ -19,7 +21,8 @@
 #include <errno.h>
 #include <fnmatch.h>
 #include <getopt.h>
-#define BUF_SIZE (sizeof(struct inotify_event) * 1024) + 255
+#include <linux/limits.h>
+#define BUF_SIZE (sizeof(struct inotify_event) + NAME_MAX + 1) * 1024
 #define STREQ(s1,s2) ( strcmp(s1,s2) == 0 )
 
 struct watchlistentry
@@ -45,9 +48,12 @@ struct ignorelist *ignorelist_head = NULL;
 struct ignorelist **ignorelist_current = &ignorelist_head;
 
 
-/* Write once globals */
+/* Write once globals. Set from process_arguments*/
 bool silent = false;
 bool noappend = false;
+bool fromstdin = false;
+bool forkbombcheck = true;
+bool daemonize  = false;
 uint32_t mask = 0;
 char *prog = NULL;
 char *path_logfile = NULL;
@@ -176,7 +182,7 @@ void watchqueue_addpath(const char *pathname)
 	watchlist= &e->next;
 }
 
-void start_watches(int fd, uint32_t mask)
+void create_watches(int fd, uint32_t mask)
 {
 	for(struct watchlistentry *lkp = watchlist_head; lkp != NULL; lkp = lkp->next)
 	{
@@ -401,35 +407,18 @@ static struct option long_options[] =
 };
 
 
-
-int main(int argc, char **argv)
+void parse_options(int argc, char **argv)
 {
-	uint32_t optmask = 0; 
-	bool fromstdin = false;
-	bool forkbombcheck = true;
-	int ifd;
 	char *watchpath = NULL;
-
-	if(argc < 2) 
-	{ 
-		print_usage();
-		exit(EXIT_FAILURE);
-	}
-
-	signal(SIGCHLD, SIG_IGN);
-	
 	int option;
     int option_index;
+    uint32_t optmask = 0; 
 	while((option = getopt_long(argc, argv, "absdo:w:m:l:i:", long_options, &option_index)) != -1)
 	{
 		switch(option)
 		{
 			case 'd':
-				if(daemon(0,0) == -1)
-				{
-					perror("daemon");
-					exit(EXIT_FAILURE);
-				}
+				daemonize = true;
 				break;
 			case 'o':
 				path_logfile = optarg;
@@ -467,18 +456,6 @@ int main(int argc, char **argv)
 				break;
 		}	
 	}
-
-	if(fromstdin)
-		queue_watches_from_stdin();
-
-	if(watchlist_head == NULL)
-	{ 
-		watchpath = get_cwd();
-		watchqueue_addpath(watchpath);
-	}
-
-	if(mask == 0) 
-		mask |= IN_CLOSE_WRITE;
 	
 	if(optind >= argc) 
 	{ 
@@ -487,10 +464,32 @@ int main(int argc, char **argv)
 	}
 
 	prog = argv[optind];
-	if(! file_exists(prog))
+}
+
+void process_options()
+{
+	if(fromstdin)
+		queue_watches_from_stdin();
+
+	if(daemonize)
 	{
-		perror("file_exists");
-		return false;
+		if(daemon(0,0) == -1)
+		{
+			perror("daemon");
+			exit(EXIT_FAILURE);
+		}
+	}
+	
+	if(watchlist_head == NULL)
+		watchqueue_addpath(get_cwd());
+	
+	if(mask == 0) 
+		mask |= IN_CLOSE_WRITE;
+	
+	if(! prog  || ! file_exists(prog))
+	{
+		fprintf(stderr, "File %s does not exist", prog);
+		exit(EXIT_FAILURE);
 	}
 	
 	if(path_logfile)
@@ -502,30 +501,52 @@ int main(int argc, char **argv)
 		char *path_prog = xrealpath(prog, NULL);
 		check_forkbomb(path_logfile, path_prog);
 	}
+}
 
-	ifd = inotify_init();
-	start_watches(ifd, mask);
-
+void start_monitoring(int ifd)
+{
 	while(1) 
 	{
-		int len;
-		int offset =0;
-		char buf[BUF_SIZE];
-		len = read(ifd, buf, BUF_SIZE);
-		if(len == -1) 
-		{
-			if(errno == EINTR) 
-				continue;
-			perror("read");
-			exit(EXIT_FAILURE);
-		}
+			int len;
+			int offset =0;
+			char buf[BUF_SIZE];
+			len = read(ifd, buf, BUF_SIZE);
+			if(len == -1) 
+			{
+				if(errno == EINTR) 
+					continue;
+				perror("read");
+				exit(EXIT_FAILURE);
+			}
 
-		while(offset < len)
-		{
+			while(offset < len)
+			{
 
-			struct inotify_event *event = (struct inotify_event *)&buf[offset];
-			handle_event(event);
-			offset+=sizeof(struct inotify_event) + event->len;
-		}
+				struct inotify_event *event = (struct inotify_event *)&buf[offset];
+				handle_event(event);
+				offset+=sizeof(struct inotify_event) + event->len;
+			}
 	}              
+}
+int main(int argc, char **argv)
+{
+	if(argc < 2) 
+	{ 
+		print_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	signal(SIGCHLD, SIG_IGN);
+	
+	parse_options(argc, argv);
+	process_options();
+	
+	int ifd = inotify_init();
+	if(ifd == -1)
+	{
+		perror("inotify_init");
+		exit(EXIT_FAILURE);
+	}
+	create_watches(ifd, mask);
+	start_monitoring(ifd);
 }
