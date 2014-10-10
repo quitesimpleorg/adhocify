@@ -24,7 +24,7 @@
 #include <linux/limits.h>
 #define BUF_SIZE (sizeof(struct inotify_event) + NAME_MAX + 1) * 1024
 #define STREQ(s1,s2) ( strcmp(s1,s2) == 0 )
-
+#define SCRIPT_PLACE_SPECIFIER "{}" //TODO: think of a better name...
 struct watchlistentry
 {
 	int ifd;
@@ -50,14 +50,15 @@ struct ignorelist **ignorelist_current = &ignorelist_head;
 
 /* Write once globals. Set from process_arguments*/
 bool silent = false;
-bool noappend = false;
+bool noenv = false;
 bool fromstdin = false;
 bool forkbombcheck = true;
 bool daemonize  = false;
 uint32_t mask = 0;
 char *prog = NULL;
 char *path_logfile = NULL;
-
+char **script_arguments = NULL; //options to be passed to script we are calling 
+size_t n_script_arguments = 0;
 
 void *xmalloc(size_t size)
 {
@@ -227,14 +228,36 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 				return false;	
 		}
 
+	
+		if(! noenv)
+		{
+			char envvar[30];
+			snprintf(envvar, sizeof(envvar), "adhocifyevent=%"PRIu32, eventmask); 
+			putenv(envvar);
+		}
+		
+		char *arguments[n_script_arguments + 2]; //2 = argv0 and terminating NULL
+		
 		const char *argv0 = memrchr(prog, '/', strlen(prog));
 		argv0 = ( argv0 == NULL ) ? prog : argv0+1;
-
-		char envvar[30];
-		snprintf(envvar, sizeof(envvar), "adhocifyevent=%"PRIu32, eventmask); 
-		putenv(envvar);
-
-		execl(prog, argv0, (! noappend) ? eventfile : NULL, NULL);
+		arguments[0] = argv0;
+		
+		const int begin_offset = 1;
+		for(int i = 0; i < n_script_arguments; i++)
+		{
+			char *argument = script_arguments[i];
+			if(STREQ(argument, SCRIPT_PLACE_SPECIFIER))
+				arguments[i+begin_offset] = eventfile;
+			else
+				arguments[i+begin_offset] = argument;
+		}
+		
+		arguments[n_script_arguments+begin_offset] = NULL;
+		
+	
+		execv(prog, arguments);
+		
+		
 		perror("execlp");
 		return false;
 	}
@@ -379,7 +402,7 @@ static inline char *get_cwd()
 
 void print_usage()
 {
-	printf("adhocify [OPTIONS]script\n");
+	printf("adhocify [OPTIONS] script [arguments for script]\n");
 	
 	printf("--daemon, -d\t\t\tdaemonize\n");
 	printf("--path, -w\t\t\tpath -- adds the specified path to the watchlist\n");
@@ -390,6 +413,7 @@ void print_usage()
 	printf("--stdin, -s\t\t\tRead the paths which must be added to the watchlist from stdin. Each path in a seperate line\n");
 	printf("--no-forkbomb-check, -b\t\tDisable fork bomb detection\n");
 	printf("--ignore, -i\t\t\tpattern -- Ignore events on files for which the pattern matches\n");  
+	printf("\n\nIf your script should know the file the event occured on, use {} when you specify the script arguments (like xargs)\n");
 }
 
 static struct option long_options[] = 
@@ -436,7 +460,7 @@ void parse_options(int argc, char **argv)
 				watchqueue_addpath(watchpath);
 				break;
 			case 'a':
-				noappend=true;
+				noenv=true;
 				break;
 			case 's':
 				fromstdin=true;
@@ -457,13 +481,19 @@ void parse_options(int argc, char **argv)
 		}	
 	}
 	
-	if(optind >= argc) 
+	if(optind == argc) 
 	{ 
+		print_usage();
 		logerror("missing prog/script path\n");
 		exit(EXIT_FAILURE); 
 	}
-
-	prog = argv[optind];
+	
+	prog = argv[optind++];
+	if(optind < argc)
+	{
+		script_arguments = &argv[optind];
+		n_script_arguments = argc - optind;
+	}
 }
 
 void process_options()
@@ -486,9 +516,9 @@ void process_options()
 	if(mask == 0) 
 		mask |= IN_CLOSE_WRITE;
 	
-	if(! prog  || ! file_exists(prog))
+	if(! file_exists(prog))
 	{
-		fprintf(stderr, "File %s does not exist", prog);
+		fprintf(stderr, "File %s does not exist\n", prog);
 		exit(EXIT_FAILURE);
 	}
 	
