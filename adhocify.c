@@ -231,7 +231,7 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 		argv0 = ( argv0 == NULL ) ? prog : argv0+1;
 
 		char envvar[30];
-		snprintf(envvar, 30, "adhocifyevent=%"PRIu32, eventmask); 
+		snprintf(envvar, sizeof(envvar), "adhocifyevent=%"PRIu32, eventmask); 
 		putenv(envvar);
 
 		execl(prog, argv0, (! noappend) ? eventfile : NULL, NULL);
