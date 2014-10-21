@@ -246,9 +246,7 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 		}
 		
 		execv(prog, script_arguments);
-		
-		
-		perror("execlp");
+		perror("execv");
 		return false;
 	}
 	if(pid == -1)
