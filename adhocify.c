@@ -236,26 +236,16 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 			putenv(envvar);
 		}
 		
-		char *arguments[n_script_arguments + 2]; //2 = argv0 and terminating NULL
-		
-		const char *argv0 = memrchr(prog, '/', strlen(prog));
-		argv0 = ( argv0 == NULL ) ? prog : argv0+1;
-		arguments[0] = argv0;
-		
-		const int begin_offset = 1;
-		for(int i = 0; i < n_script_arguments; i++)
+		//This can be thrown away, if in create_script_args we create pointer to the pointer pointing to the SCRIPT_PLACE_SPECIFIER string. 
+		//Then all what we have to do here is to set the pointer to eventfile. However, we can have multiple of those, probably not worth it as we shouldn't have tons of arguments
+		for(unsigned int i = 0; i < n_script_arguments; i++)
 		{
 			char *argument = script_arguments[i];
-			if(STREQ(argument, SCRIPT_PLACE_SPECIFIER))
-				arguments[i+begin_offset] = eventfile;
-			else
-				arguments[i+begin_offset] = argument;
+			if(argument && STREQ(argument, SCRIPT_PLACE_SPECIFIER))
+				script_arguments[i] = eventfile;
 		}
 		
-		arguments[n_script_arguments+begin_offset] = NULL;
-		
-	
-		execv(prog, arguments);
+		execv(prog, script_arguments);
 		
 		
 		perror("execlp");
@@ -430,6 +420,28 @@ static struct option long_options[] =
   { "help", no_argument, 0, 'h' }
 };
 
+//fills global n_script_arguments and script_arguments var
+void fill_script_arguments(size_t n_args, char *args[])
+{
+		n_script_arguments = n_args + 2; //2 = argv0 and terminating NULL
+		
+		char **arguments = xmalloc( n_script_arguments * sizeof(char *) ); 
+		
+		const char *argv0 = memrchr(prog, '/', strlen(prog));
+		argv0 = ( argv0 == NULL ) ? prog : argv0+1;
+		arguments[0] = argv0;
+		
+		const int begin_offset = 1;
+		for(unsigned int i = 0; i < n_args; i++)
+		{
+			char *argument = args[i];
+			arguments[i+begin_offset] = strdup(argument); 
+		}
+		arguments[n_args+begin_offset] = NULL;
+		
+		script_arguments = arguments;
+}
+
 
 void parse_options(int argc, char **argv)
 {
@@ -491,8 +503,7 @@ void parse_options(int argc, char **argv)
 	prog = argv[optind++];
 	if(optind < argc)
 	{
-		script_arguments = &argv[optind];
-		n_script_arguments = argc - optind;
+		fill_script_arguments(argc - optind, &argv[optind]);
 	}
 }
 
