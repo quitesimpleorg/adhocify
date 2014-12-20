@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <sys/inotify.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -65,6 +66,9 @@ bool noenv = false;
 bool fromstdin = false;
 bool forkbombcheck = true;
 bool daemonize  = false;
+bool exit_with_child = false;
+int exitcode = 0;
+
 uint32_t mask = 0;
 char *prog = NULL;
 char *path_logfile = NULL;
@@ -426,7 +430,8 @@ static struct option long_options[] =
   { "no-forkbomb-check", no_argument, 0, 'b' },
   { "ignore", required_argument, 0, 'i' },  
   { "silent", no_argument, 0, 'q' },
-  { "help", no_argument, 0, 'h' }
+  { "help", no_argument, 0, 'h' },
+  { "exit-with-child", optional_argument, 0, 'e' }
 };
 
 //fills global n_script_arguments and script_arguments var
@@ -458,7 +463,7 @@ void parse_options(int argc, char **argv)
 	int option;
     int option_index;
     uint32_t optmask = 0; 
-	while((option = getopt_long(argc, argv, "absdo:w:m:l:i:", long_options, &option_index)) != -1)
+	while((option = getopt_long(argc, argv, "absdo:w:m:l:i:e::", long_options, &option_index)) != -1)
 	{
 		switch(option)
 		{
@@ -498,6 +503,13 @@ void parse_options(int argc, char **argv)
 			case 'h':
 				print_usage();
 				exit(EXIT_SUCCESS);
+			case 'e':
+				exit_with_child = true;
+				if(optarg)
+				{
+					exitcode = atoi(optarg);
+					
+				}
 				break;
 		}	
 	}
@@ -578,6 +590,42 @@ void start_monitoring(int ifd)
 			}
 	}              
 }
+
+void child_handler(int signum, siginfo_t *info, void *context)
+{
+	if(signum != SIGCHLD) 
+		return;
+		
+	int status;
+	pid_t p = waitpid(-1, &status, WNOHANG);
+	if(p == -1)
+	{
+		logerror("waitpid failed when handling child exit\n");
+		exit(EXIT_FAILURE);
+	}
+	if(exit_with_child)
+	{
+		if(status == exitcode)
+		{
+			logwrite("child exited with specified exit code, exiting too");
+			exit(exitcode);
+		}
+	}
+
+}
+void set_signals()
+{
+	struct sigaction action;
+	action.sa_flags = SA_NOCLDSTOP | SA_SIGINFO;
+	action.sa_sigaction = &child_handler;
+	if(sigaction(SIGCHLD, &action, NULL) == -1)
+	{
+		logerror("Error when setting up the signal handler\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+
 int main(int argc, char **argv)
 {
 	if(argc < 2) 
@@ -586,7 +634,9 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	signal(SIGCHLD, SIG_IGN);
+	//signal(SIGCHLD, SIG_IGN);
+	set_signals();
+	
 	
 	parse_options(argc, argv);
 	process_options();

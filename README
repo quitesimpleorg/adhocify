@@ -48,4 +48,6 @@ Watches for IN_OPEN events in /tmp/, launches script /home/core/myscript.sh
 ... ignores *.txt files ....
 
 
- 
+Further options
+===============
+-e, --exit-with-child: Instructs adhocify to exit once a child does. You can also specify an exit code, e. g. -e 1, to exit on errors. Default is 0.  
