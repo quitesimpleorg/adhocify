@@ -1,0 +1,2 @@
+-e: if multiple children are running and we exit, they become orphaned.
+Deal with IN_Q_OVERFLOW etc.?
