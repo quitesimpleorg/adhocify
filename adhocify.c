@@ -297,7 +297,7 @@ uint32_t nameToMask(const char *name)
 	else if(STREQ(name, "IN_DELETE_SELF"))
 		return IN_DELETE_SELF;
 	else if(STREQ(name, "IN_MOVE_SELF"))
-		return IN_DELETE_SELF;
+		return IN_MOVE_SELF;
 	else if(STREQ(name, "IN_ALL_EVENTS"))
 		return IN_ALL_EVENTS;
 	else if(STREQ(name, "IN_CLOSE"))
