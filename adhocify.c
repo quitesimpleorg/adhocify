@@ -151,7 +151,7 @@ static inline bool file_exists(const char *path)
 }
 
 
-void add_ignore_list(const char *str)
+void add_to_ignore_list(const char *str)
 {
 	*ignorelist_current = xmalloc(sizeof(struct ignorelist));
 	(*ignorelist_current)->ignore = xstrdup(str);
@@ -495,7 +495,7 @@ void parse_options(int argc, char **argv)
 				forkbombcheck=false;
 				break;
 			case 'i':
-				add_ignore_list(optarg);
+				add_to_ignore_list(optarg);
 				break;
 			case 'q':
 				silent=true;
