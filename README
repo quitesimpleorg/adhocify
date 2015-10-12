@@ -45,9 +45,8 @@ Watches for IN_OPEN events in /tmp/, launches script /home/core/myscript.sh
 
 ./adhocify -w /tmp -i *.txt /home/core/myscript.sh
 --------------------------------------------------
-... ignores *.txt files ....
-
+Watches for IN_CLOSE_WRITE events in /tmp/ but will not pass *.txt files to the script
 
 Further options
 ===============
--e, --exit-with-child: Instructs adhocify to exit once a child does. You can also specify an exit code, e. g. -e 1, to exit on errors. Default is 0.  
+-e, --exit-with-child: Instructs adhocify to exit once the script does. You can also specify an exit code, e. g. -e 1, to only exit when the script returns with an error. Default exit code is 0.  
