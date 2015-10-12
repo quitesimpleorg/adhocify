@@ -111,8 +111,10 @@ char *xrealpath(const char *path, char *resolved_path)
 
 char *ndirname(const char *path)
 {
-	if(path == NULL) 
+	if(path == NULL)
+	{
 		return xstrdup("."); 
+	}
 	char *c = strdupa(path);
 	return xstrdup(dirname(c));
 }
@@ -120,16 +122,24 @@ char *ndirname(const char *path)
 char *find_ifd_path(int ifd)
 {
 	for(struct watchlistentry *lkp = watchlist_head; lkp != NULL; lkp = lkp->next)
+	{	
 		if(lkp->ifd == ifd) 
+		{
 			return lkp->path;
+		}
+	}
 	return NULL;
 }
 
 bool is_ignored(const char *filename)
 {
 	for(struct ignorelist *l = ignorelist_head; l != NULL; l = l->next)
+	{
 		if(fnmatch(l->ignore, filename, 0) == 0)
+		{
 			return true;
+		}
+	}
 	return false;
 }
 
@@ -163,8 +173,10 @@ void add_to_ignore_list(const char *str)
 
 void logwrite(const char *format, ...)
 {
-	if(silent) 
+	if(silent)
+	{
 		return;
+	}
 	va_list args;
 	va_start(args, format);
 	vfprintf(stdout, format, args);
@@ -239,8 +251,10 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 	{
 		if(path_logfile)
 		{
-			if(! redirect_stdout(path_logfile)) 
+			if(! redirect_stdout(path_logfile))
+			{
 				return false;	
+			}
 		}
 
 	
@@ -351,9 +365,10 @@ void queue_watches_from_stdin()
 char *get_eventfile_abspath(struct inotify_event *event)
 {
 	char *wdpath = find_ifd_path(event->wd);
-	if(wdpath == NULL) 
+	if(wdpath == NULL)
+	{
 		return NULL;
-
+	}
 	size_t nameLen = strlen(event->name);
 	char *abspath = xmalloc((strlen(wdpath) + nameLen + 2) * sizeof(char));
 	strcpy(abspath, wdpath);
@@ -531,8 +546,9 @@ void parse_options(int argc, char **argv)
 void process_options()
 {
 	if(fromstdin)
+	{
 		queue_watches_from_stdin();
-
+	}
 	if(daemonize)
 	{
 		if(daemon(0,0) == -1)
@@ -543,10 +559,14 @@ void process_options()
 	}
 	
 	if(watchlist_head == NULL)
+	{
 		watchqueue_addpath(get_cwd());
-	
-	if(mask == 0) 
+	}
+
+	if(mask == 0)
+	{
 		mask |= IN_CLOSE_WRITE;
+	}	
 	
 	if(! file_exists(prog))
 	{
@@ -555,8 +575,9 @@ void process_options()
 	}
 	
 	if(path_logfile)
+	{
 		path_logfile = xrealpath(path_logfile, NULL);
-
+	}
 
 	if(forkbombcheck)
 	{
@@ -593,9 +614,11 @@ void start_monitoring(int ifd)
 
 void child_handler(int signum, siginfo_t *info, void *context)
 {
-	if(signum != SIGCHLD) 
+	if(signum != SIGCHLD)
+	{
 		return;
-		
+	}	
+	
 	int status;
 	pid_t p = waitpid(-1, &status, WNOHANG);
 	if(p == -1)
