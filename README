@@ -1,18 +1,15 @@
 What is adhocify?
 =================
 adhocify uses inotify to watch for file system events. 
-Once an event occurs a script will be launched.
-It can pass the path of the file the event occured on to this script. 
+Once an event occurs it can execute a script.
+The path of the file and the event will be passed to that script. 
 
 Requirements
 ============
 adhocify only runs on Linux. You need a kernel and libc with inotify support.
 
-How do I use adhocify?
-======================
-Launch adhocify without any arguments and you will get the options listed.
-
 Examples:
+=========
 ./adhocify -w /tmp/ /home/core/myscript.sh
 ------------------------------------------
 Watches for IN_CLOSE_WRITE events in /tmp/, launches script /home/core/myscript.sh
