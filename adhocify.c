@@ -199,7 +199,7 @@ void logerror(const char *format, ...)
 
 }
 
-void watchqueue_addpath(const char *pathname)
+void watchqueue_add_path(const char *pathname)
 {
 	*watchlist = xmalloc(sizeof(struct watchlistentry));
 	struct watchlistentry *e = *watchlist;
@@ -217,7 +217,7 @@ static int recursive_walker_callback(const char *path, const struct stat *sb,
 {
 	if(typeflag == FTW_D)
 	{
-		watchqueue_addpath(path);
+		watchqueue_add_path(path);
 	}
 	return 0;
 }
@@ -381,7 +381,7 @@ void queue_watches_from_stdin()
 	{
 		if(line[r-1] == '\n') 
 			line[r-1] = 0;
-		watchqueue_addpath(line);
+		watchqueue_add_path(line);
 	}
 }
 
@@ -523,7 +523,7 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'w':
 				watchpath = optarg;
-				watchqueue_addpath(watchpath);
+				watchqueue_add_path(watchpath);
 				break;
 			case 'r':
 				watchpath = optarg;
@@ -589,7 +589,7 @@ void process_options()
 	
 	if(watchlist_head == NULL)
 	{
-		watchqueue_addpath(get_cwd());
+		watchqueue_add_path(get_cwd());
 	}
 
 	if(mask == 0)
