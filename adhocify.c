@@ -447,7 +447,7 @@ void print_usage()
 	
 	printf("--daemon, -d\t\t\tdaemonize\n");
 	printf("--path, -w\t\t\tpath -- adds the specified path to the watchlist\n");
-	printf("--recursive, -r\t\t\tpath -- adds the specified path to the watchlist recursively (all subdirectories too)\n");
+	printf("--recursive, -r\t\t\tpath -- adds the specified path to the watchlist recursively (all subdirectories too. Do not use for large structures!)\n");
 	printf("--logfile, -o\t\t\tlogfile -- output goes here\n");
 	printf("--mask, -m\t\t\tmaskval -- inotify mask value. Can be specified multiple times, will be ORed.\n");
 	printf("--no-env, -a\t\t\tif specified, the inotify event which occured won't be passed to the script as an environment variable.\n");
