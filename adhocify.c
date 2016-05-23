@@ -45,7 +45,8 @@ struct watchlistentry
 	bool isdir;
 	struct watchlistentry *next;
 };
-
+size_t max_watches = 0;
+size_t watchlistentries = 0;
 struct watchlistentry *watchlist_head = NULL;
 struct watchlistentry **watchlist = &watchlist_head;
 
@@ -209,12 +210,18 @@ void watchqueue_add_path(const char *pathname)
 	e->isdir = path_is_directory(pathname);
 	e->next = NULL;
 	watchlist= &e->next;
+	++watchlistentries;
 }
 
 static int recursive_walker_callback(const char *path, const struct stat *sb,
                           int typeflag, struct FTW *ftwbuf)
                          
 {
+	if(watchlistentries == max_watches)
+	{
+		fprintf(stderr, "Error: Max number of watches reached\n");
+		return -1;
+	}
 	if(typeflag == FTW_D)
 	{
 		watchqueue_add_path(path);
@@ -223,10 +230,24 @@ static int recursive_walker_callback(const char *path, const struct stat *sb,
 }
 void watchqueue_add_recursive(const char *pathname)
 {
+		FILE *fp = fopen("/proc/sys/fs/inotify/max_user_watches", "r");
+		if(fp == NULL)
+		{
+			fprintf(stderr, "error opening max_user_watches file\n");
+			exit(EXIT_FAILURE);
+		}
+	
+		if(fscanf(fp, "%zu", &max_watches) < 1)
+		{
+			fprintf(stderr, "error processing max_user_watches file\n");
+			exit(EXIT_FAILURE);
+		}
+		fclose(fp);
+		
 		int walker = nftw(pathname, &recursive_walker_callback, 10, FTW_PHYS);
 		if(walker == -1)
 		{
-			perror("nftw");
+			fprintf(stderr, "nftw failed\n");
 			exit(EXIT_FAILURE);
 		}
 }
