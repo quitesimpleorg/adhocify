@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 <adhocify@quitesimple.org>
+ * Copyright (c) 2014-2016 <adhocify@quitesimple.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <fnmatch.h>
 #include <getopt.h>
+#include <ftw.h>
 #include <linux/limits.h>
 #define BUF_SIZE (sizeof(struct inotify_event) + NAME_MAX + 1) * 1024
 #define STREQ(s1,s2) ( strcmp(s1,s2) == 0 )
@@ -209,6 +210,28 @@ void watchqueue_addpath(const char *pathname)
 	e->next = NULL;
 	watchlist= &e->next;
 }
+
+static int recursive_walker_callback(const char *path, const struct stat *sb,
+                          int typeflag, struct FTW *ftwbuf)
+                         
+{
+	if(typeflag == FTW_D)
+	{
+		watchqueue_addpath(path);
+	}
+	return 0;
+}
+void watchqueue_add_recursive(const char *pathname)
+{
+		int walker = nftw(pathname, &recursive_walker_callback, 10, FTW_PHYS);
+		if(walker == -1)
+		{
+			perror("nftw");
+			exit(EXIT_FAILURE);
+		}
+}
+
+
 
 void create_watches(int fd, uint32_t mask)
 {
@@ -424,6 +447,7 @@ void print_usage()
 	
 	printf("--daemon, -d\t\t\tdaemonize\n");
 	printf("--path, -w\t\t\tpath -- adds the specified path to the watchlist\n");
+	printf("--recursive, -r\t\t\tpath -- adds the specified path to the watchlist recursively (all subdirectories too)\n");
 	printf("--logfile, -o\t\t\tlogfile -- output goes here\n");
 	printf("--mask, -m\t\t\tmaskval -- inotify mask value. Can be specified multiple times, will be ORed.\n");
 	printf("--no-env, -a\t\t\tif specified, the inotify event which occured won't be passed to the script as an environment variable.\n");
@@ -479,7 +503,7 @@ void parse_options(int argc, char **argv)
 	int option;
     int option_index;
     uint32_t optmask = 0; 
-	while((option = getopt_long(argc, argv, "absdo:w:m:l:i:e::", long_options, &option_index)) != -1)
+	while((option = getopt_long(argc, argv, "absdo:w:r:m:l:i:e::", long_options, &option_index)) != -1)
 	{
 		switch(option)
 		{
@@ -500,6 +524,10 @@ void parse_options(int argc, char **argv)
 			case 'w':
 				watchpath = optarg;
 				watchqueue_addpath(watchpath);
+				break;
+			case 'r':
+				watchpath = optarg;
+				watchqueue_add_recursive(watchpath);
 				break;
 			case 'a':
 				noenv=true;
