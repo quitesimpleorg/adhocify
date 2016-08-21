@@ -381,7 +381,7 @@ void check_forkbomb(const char *path_logfile, const char *path_prog)
 			char *dir_lkpPath = lkp->path;
 			if( STREQ(dir_lkpPath, dir_log)	|| STREQ(dir_lkpPath, dir_prog) )
 			{
-				logerror("Don't place your logfiles or prog in a directory you are watching for events. Pass -b to bypass this check.\n");
+				logerror("Don't place your logfiles or script in a directory you are watching for events. Pass -b to bypass this check.\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -433,7 +433,7 @@ void handle_event(struct inotify_event *event)
 		char *eventfile_abspath = get_eventfile_abspath(event);
 		if(eventfile_abspath == NULL)
 		{
-			logerror("Could not get absoulte path for event. Watch descriptor %i\n", event->wd);
+			logerror("Could not get absolute path for event. Watch descriptor %i\n", event->wd);
 			exit(EXIT_FAILURE);
 		}
 		
