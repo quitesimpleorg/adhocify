@@ -1,49 +1,44 @@
 What is adhocify?
 =================
-adhocify uses inotify to watch for file system events. 
-Once an event occurs it can execute a script.
-The path of the file and the event will be passed to that script. 
+adhocify uses inotify to watch for file system events. Once an event 
+occurs it can execute a script. The path of the file and the event 
+will be passed to that script. 
 
 Requirements
 ============
-adhocify only runs on Linux. You need a kernel and libc with inotify support.
+adhocify only runs on Linux. You need a kernel and libc with inotify 
+support - pretty much all satisfy this condition.
+
+Options
+=======
+See adhocify --help.
 
 Examples:
 =========
-./adhocify -w /tmp/ /home/core/myscript.sh
-------------------------------------------
-Watches for IN_CLOSE_WRITE events in /tmp/, launches script /home/core/myscript.sh
+adhocify -w /tmp/ /home/user/myscript.sh
+	 Watches for IN_CLOSE_WRITE events in /tmp/ and 
+	 launches script /home/user/myscript.sh
 
-/adhocify -w /tmp/ /home/core/myscript.sh {}
-------------------------------------------
-Same as above, but also passes the file an event occured on to that script. (argv[1]).
+adhocify -w /tmp/ /home/user/myscript.sh {}
+	Same as above, but also passes the file 
+	an event occured on to that script.(argv[1]).
 
 
-./adhocify -w /tmp/ /bin/echo the file {} was written to
----------------------------------------------------------
-Running
-echo "Test" > /tmp/test
+adhocify -w /tmp/ /bin/echo the file {} was written to
+	Running	echo "Test" > /tmp/test	will print in the shell 
+	adhocify was launched in: "the file /tmp/test was written to"
 
-Will print in the shell adhocify was launched in:
-the file /tmp/test was written to
+adhocify -w /tmp/ -w /var/run /home/user/myscript.sh
+	Same as above, but also watches /var/run
 
-./adhocify -w /tmp/ -w /var/run /home/core/myscript.sh
-------------------------------------------------------
-Same as above, but also watches /var/run
+adhocify /home/user/myscript.sh
+	Watches for IN_CLOSE_WRITE events in the current directory, launches script 
+	/home/user/myscript.
 
-./adhocify /home/core/myscript.sh
----------------------------------
-Watches for IN_CLOSE_WRITE events in the current directory, launches script 
-/home/core/myscript.
+adhocify -m IN_OPEN -w /tmp /home/user/myscript.sh
+	Watches for IN_OPEN events in /tmp/, launches script /home/user/myscript.sh
 
-./adhocify -m IN_OPEN -w /tmp /home/core/myscript.sh
-----------------------------------------------------
-Watches for IN_OPEN events in /tmp/, launches script /home/core/myscript.sh
+adhocify -w /tmp -i *.txt /home/user/myscript.sh
+	Watches for IN_CLOSE_WRITE events in /tmp/ but will not pass *.txt files to the script
 
-./adhocify -w /tmp -i *.txt /home/core/myscript.sh
---------------------------------------------------
-Watches for IN_CLOSE_WRITE events in /tmp/ but will not pass *.txt files to the script
 
-Further options
-===============
--e, --exit-with-child: Instructs adhocify to exit once the script does. You can also specify an exit code, e. g. -e 1, to only exit when the script returns with an error. Default exit code is 0.  
