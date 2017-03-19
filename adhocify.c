@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016 <adhocify@quitesimple.org>
+ * Copyright (c) 2014-2017 Albert S. <adhocify@quitesimple.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -587,7 +587,8 @@ void parse_options(int argc, char **argv)
 	}
 	
 	prog = argv[optind++];
-	if(optind < argc)
+	
+	if(optind <= argc)
 	{
 		fill_script_arguments(argc - optind, &argv[optind]);
 	}
