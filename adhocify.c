@@ -45,7 +45,7 @@ struct watchlistentry
 	bool isdir;
 	struct watchlistentry *next;
 };
-size_t max_watches = 0;
+
 size_t watchlistentries = 0;
 struct watchlistentry *watchlist_head = NULL;
 struct watchlistentry **watchlist = &watchlist_head;
@@ -211,45 +211,6 @@ void watchqueue_add_path(const char *pathname)
 	e->next = NULL;
 	watchlist= &e->next;
 	++watchlistentries;
-}
-
-static int recursive_walker_callback(const char *path, const struct stat *sb,
-                          int typeflag, struct FTW *ftwbuf)
-                         
-{
-	if(watchlistentries == max_watches)
-	{
-		fprintf(stderr, "Error: Max number of watches reached\n");
-		return -1;
-	}
-	if(typeflag == FTW_D)
-	{
-		watchqueue_add_path(path);
-	}
-	return 0;
-}
-void watchqueue_add_recursive(const char *pathname)
-{
-		FILE *fp = fopen("/proc/sys/fs/inotify/max_user_watches", "r");
-		if(fp == NULL)
-		{
-			fprintf(stderr, "error opening max_user_watches file\n");
-			exit(EXIT_FAILURE);
-		}
-	
-		if(fscanf(fp, "%zu", &max_watches) < 1)
-		{
-			fprintf(stderr, "error processing max_user_watches file\n");
-			exit(EXIT_FAILURE);
-		}
-		fclose(fp);
-		
-		int walker = nftw(pathname, &recursive_walker_callback, 10, FTW_PHYS);
-		if(walker == -1)
-		{
-			fprintf(stderr, "nftw failed\n");
-			exit(EXIT_FAILURE);
-		}
 }
 
 
@@ -468,7 +429,6 @@ void print_usage()
 	
 	printf("--daemon, -d\t\t\tdaemonize\n");
 	printf("--path, -w\t\t\tpath -- adds the specified path to the watchlist\n");
-	printf("--recursive, -r\t\t\tpath -- adds the specified path to the watchlist recursively (all subdirectories too. Do not use for large structures!)\n");
 	printf("--logfile, -o\t\t\tlogfile -- output goes here\n");
 	printf("--mask, -m\t\t\tmaskval -- inotify mask value. Can be specified multiple times, will be ORed.\n");
 	printf("--no-env, -a\t\t\tif specified, the inotify event which occured won't be passed to the script as an environment variable.\n");
@@ -545,10 +505,6 @@ void parse_options(int argc, char **argv)
 			case 'w':
 				watchpath = optarg;
 				watchqueue_add_path(watchpath);
-				break;
-			case 'r':
-				watchpath = optarg;
-				watchqueue_add_recursive(watchpath);
 				break;
 			case 'a':
 				noenv=true;
