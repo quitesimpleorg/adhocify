@@ -46,7 +46,6 @@ struct watchlistentry
 	struct watchlistentry *next;
 };
 
-size_t watchlistentries = 0;
 struct watchlistentry *watchlist_head = NULL;
 struct watchlistentry **watchlist = &watchlist_head;
 
@@ -210,7 +209,6 @@ void watchqueue_add_path(const char *pathname)
 	e->isdir = path_is_directory(pathname);
 	e->next = NULL;
 	watchlist= &e->next;
-	++watchlistentries;
 }
 
 
