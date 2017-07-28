@@ -374,16 +374,20 @@ char *get_eventfile_abspath(struct inotify_event *event)
 	{
 		return NULL;
 	}
-	size_t nameLen = strlen(event->name);
-	char *abspath = xmalloc((strlen(wdpath) + nameLen + 2) * sizeof(char));
-	strcpy(abspath, wdpath);
-	if(nameLen > 0) 
+	
+	char *result = NULL;
+	if(event->name != NULL && *event->name != 0)
 	{
-		strcat(abspath, "/");
-		strcat(abspath, event->name);
+		if(asprintf(&result, "%s/%s", wdpath, event->name) == -1)
+		{
+			return NULL;
+		}
 	}
-
-	return abspath;
+	else
+	{
+		result = strdup(wdpath);
+	}
+	return result;
 }
 
 
@@ -484,7 +488,7 @@ void parse_options(int argc, char **argv)
 	int option;
     int option_index;
     uint32_t optmask = 0; 
-	while((option = getopt_long(argc, argv, "absdo:w:r:m:l:i:e::", long_options, &option_index)) != -1)
+	while((option = getopt_long(argc, argv, "absdo:w:m:l:i:e::", long_options, &option_index)) != -1)
 	{
 		switch(option)
 		{
