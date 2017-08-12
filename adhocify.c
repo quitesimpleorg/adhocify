@@ -374,7 +374,7 @@ char *get_eventfile_abspath(struct inotify_event *event)
 	}
 	
 	char *result = NULL;
-	if(event->name != NULL && *event->name != 0)
+	if((event->len) > 0 )
 	{
 		if(asprintf(&result, "%s/%s", wdpath, event->name) == -1)
 		{
