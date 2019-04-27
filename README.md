@@ -52,6 +52,10 @@ find . -type d | adhocify -s /home/user/myscript.sh
   limits, thus it may not always work, e. g. when inotify descriptors are being used by other programs or the tree is too large. Therefore adhocify will exit
   if it cannot setup a watch for all supplied directories. See inotify(7), /proc/sys/fs/inotify/.
 
+adhocify -m IN_CREATE --exit-with-child=0 -- /usr/bin/test -f awaited_file
+
+  * Keep running until the file named "awaited_file" is created in the current directory.
+
 Other tools
 ===========
 If adhocify does not suit your needs, take a look at:
