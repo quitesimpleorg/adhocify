@@ -61,14 +61,14 @@ struct ignorelist *ignorelist_head = NULL;
 struct ignorelist **ignorelist_current = &ignorelist_head;
 
 
-/* Write once globals. Set from process_arguments*/
+/* Write-once globals. Set from process_arguments*/
 bool silent = false;
 bool noenv = false;
 bool fromstdin = false;
 bool forkbombcheck = true;
 bool daemonize  = false;
 bool exit_with_child = false;
-int exitcode = 0;
+int awaited_child_exit_code = -1;
 
 uint32_t mask = 0;
 char *prog = NULL;
@@ -530,8 +530,7 @@ void parse_options(int argc, char **argv)
 				exit_with_child = true;
 				if(optarg)
 				{
-					exitcode = atoi(optarg);
-					
+					awaited_child_exit_code = atoi(optarg);
 				}
 				break;
 		}	
@@ -637,11 +636,26 @@ void child_handler(int signum, siginfo_t *info, void *context)
 	}
 	if(exit_with_child)
 	{
-		if(status == exitcode)
+		int adhocify_exit_code = 0;
+		if(WIFEXITED(status))
 		{
-			logwrite("child exited with specified exit code, exiting too");
-			exit(exitcode);
+			adhocify_exit_code = WEXITSTATUS(status);
+			if(awaited_child_exit_code > -1)
+			{
+				if(adhocify_exit_code == awaited_child_exit_code)
+				{
+					logwrite("child exited with specified exit code, exiting too\n");
+					exit(adhocify_exit_code);
+				}
+				return; //not the exit code we wanted, keep running
+			}
 		}
+		if(WIFSIGNALED(status))
+		{
+			adhocify_exit_code = 128 + WTERMSIG(status); //copy bash's behaviour
+		}
+		//TODO: coredump?
+		exit(adhocify_exit_code);
 	}
 
 }
