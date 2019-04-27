@@ -51,3 +51,8 @@ find . -type d | adhocify -s /home/user/myscript.sh
   * Starts monitoring every subdirectory of the current path for IN\_CLOSE\_WRITE events. However, inotify has 
   limits, thus it may not always work, e. g. when inotify descriptors are being used by other programs or the tree is too large. Therefore adhocify will exit
   if it cannot setup a watch for all supplied directories. See inotify(7), /proc/sys/fs/inotify/.
+
+Other tools
+===========
+If adhocify does not suit your needs, take a look at:
+  * inotify-tools: https://github.com/rvoicilas/inotify-tools/wiki
