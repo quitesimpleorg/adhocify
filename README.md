@@ -16,45 +16,51 @@ See adhocify --help.
 
 Examples:
 =========
+```
 adhocify -w /tmp/ /home/user/myscript.sh
-    
-  * Watches for IN\_CLOSE\_WRITE events in /tmp/ and  launches script /home/user/myscript.sh
+```
+Watches for IN\_CLOSE\_WRITE events in /tmp/ and  launches script /home/user/myscript.sh
 
-adhocify -w /tmp/ /home/user/myscript.sh {}
-	
-  * Same as above, but also passes the file an event occured on to that script.(argv[1]).
-
-
-adhocify -w /tmp/ /bin/echo the file {} was written to
-	
-  * Running echo "Test" > /tmp/test will print in the shell adhocify was launched in: "the file /tmp/test was written to"
-
+```
 adhocify -w /tmp/ -w /var/run /home/user/myscript.sh
+```
+Same as above, but also watches /var/run
 
-  * Same as above, but also watches /var/run
+```
+adhocify -w /tmp/ -w /var/run /home/user/myscript.sh {}
+```
+Same as above, but also passes the file an event occured on to that script.(argv[1]).
 
+```
+adhocify -w /tmp/ /bin/echo the file {} was written to
+```
+Running echo "Test" > /tmp/test will print in the shell adhocify was launched in: "the file /tmp/test was written to"
+
+```
 adhocify /home/user/myscript.sh
+```
+Watches for IN\_CLOSE\_WRITE events in the current directory, launches script /home/user/myscript.
 
-  * Watches for IN\_CLOSE\_WRITE events in the current directory, launches script 
-	/home/user/myscript.
-
+```
 adhocify -m IN\_OPEN -w /tmp /home/user/myscript.sh
+```
+Watches for IN\_OPEN events in /tmp/, launches script /home/user/myscript.sh
 
-  * Watches for IN\_OPEN events in /tmp/, launches script /home/user/myscript.sh
-
+```
 adhocify -w /tmp -i *.txt /home/user/myscript.sh
+```
+Watches for IN\_CLOSE\_WRITE events in /tmp/ but will not pass any events for *.txt files to the script
 
-  * Watches for IN\_CLOSE\_WRITE events in /tmp/ but will not pass *.txt files to the script
-
+```
 find . -type d | adhocify -s /home/user/myscript.sh
-  
-  * Starts monitoring every subdirectory of the current path for IN\_CLOSE\_WRITE events. However, inotify has 
-  limits, thus it may not always work, e. g. when inotify descriptors are being used by other programs or the tree is too large. Therefore adhocify will exit
-  if it cannot setup a watch for all supplied directories. See inotify(7), /proc/sys/fs/inotify/.
+```
+Starts monitoring every subdirectory of the current path for IN\_CLOSE\_WRITE events. However, inotify has  limits, thus it may not always work, e. g. when inotify descriptors are being used by other programs or the tree is too large. Therefore adhocify will exit
+if it cannot setup a watch for all supplied directories. See inotify(7), /proc/sys/fs/inotify/.
 
+```
 adhocify -m IN_CREATE --exit-with-child=0 -- /usr/bin/test -f awaited_file
-
-  * Keep running until the file named "awaited_file" is created in the current directory.
+```
+Keep running until the file named "awaited_file" is created in the current directory.
 
 Other tools
 ===========
