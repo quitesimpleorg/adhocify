@@ -340,7 +340,7 @@ void check_forkbomb(const char *path_logfile, const char *path_prog)
 			char *dir_lkpPath = lkp->path;
 			if( STREQ(dir_lkpPath, dir_log)	|| STREQ(dir_lkpPath, dir_prog) )
 			{
-				logerror("Don't place your logfiles or script in a directory you are watching for events. Pass -b to bypass this check.\n");
+				logerror("Don't place your logfiles or command in a directory you are watching for events. Pass -b to bypass this check.\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -427,19 +427,17 @@ static inline char *get_cwd()
 
 void print_usage()
 {
-	printf("adhocify [OPTIONS] script [arguments for script]\n");
-	
-	printf("--daemon, -d\t\t\tdaemonize\n");
-	printf("--path, -w\t\t\tpath -- adds the specified path to the watchlist\n");
-	printf("--logfile, -o\t\t\tlogfile -- output goes here\n");
-	printf("--mask, -m\t\t\tmaskval -- inotify mask value. Can be specified multiple times, will be ORed.\n");
-	printf("--no-env, -a\t\t\tif specified, the inotify event which occured won't be passed to the script as an environment variable.\n");
-	printf("--silent, -q\t\t\tsilent\n");
-	printf("--stdin, -s\t\t\tRead the paths which must be added to the watchlist from stdin. Each path in a seperate line\n");
-	printf("--no-forkbomb-check, -b\t\tDisable fork bomb detection\n");
-	printf("--ignore, -i\t\t\tpattern -- Ignore events on files for which the pattern matches\n"); 
-	printf("--exit-with-child, -e\t\tExit when the script exits. You can also specify a return code (e. g. -e 1 = exit on error)\n");
-	printf("\n\nIf your script should know the file the event occured on, use {} when you specify the script arguments (like xargs)\n");
+	printf("adhocify [OPTIONS] command [arguments for command] - Monitor for inotify events and launch commands\n\n");
+    printf("--daemon, -d            run as a daemon\n");
+	printf("--path, -w              adds the specified path to the watchlist\n");
+	printf("--logfile, -o           path to write output of adhocify and stdout/stderr of launched commands to\n");
+	printf("--mask, -m              inotify event to watch for (see inotify(7)). Can be specified multiple times to watch for several events\n");
+	printf("--no-env, -a            if specified, the inotify event which occured won't be passed to the command as an environment variable\n");
+	printf("--silent, -q            surpress any output created by adhocify itself\n");
+	printf("--stdin, -s             Read the paths which must be added to the watchlist from stdin. Each path must be in a seperate line\n");
+	printf("--no-forkbomb-check, -b Disable fork bomb detection\n");
+	printf("--ignore, -i            Shell wildcard pattern (see glob(7)) to ignore events on files for which the pattern matches\n");
+	printf("--exit-with-child, -e   Exit when the commands exits. You can also specify a return code (e. g. -e=1 to exit only on errors)\n");	printf("\nIf your command should know the file the event occured on, use the {} placeholder when you specify the arguments (like xargs)\n");
 }
 
 static struct option long_options[] = 
@@ -539,7 +537,7 @@ void parse_options(int argc, char **argv)
 	if(optind == argc) 
 	{ 
 		print_usage();
-		logerror("missing prog/script path\n");
+		logerror("missing command path\n");
 		exit(EXIT_FAILURE); 
 	}
 	
