@@ -555,15 +555,7 @@ void process_options()
 	{
 		queue_watches_from_stdin();
 	}
-	if(daemonize)
-	{
-		if(daemon(0,0) == -1)
-		{
-			perror("daemon");
-			exit(EXIT_FAILURE);
-		}
-	}
-	
+
 	if(watchlist_head == NULL)
 	{
 		watchqueue_add_path(get_cwd());
@@ -589,6 +581,15 @@ void process_options()
 	{
 		char *path_prog = xrealpath(prog, NULL);
 		check_forkbomb(path_logfile, path_prog);
+	}
+
+	if(daemonize)
+	{
+		if(daemon(0,0) == -1)
+		{
+			perror("daemon");
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 
