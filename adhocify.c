@@ -69,6 +69,7 @@ bool forkbombcheck = true;
 bool daemonize  = false;
 bool exit_with_child = false;
 int awaited_child_exit_code = -1;
+bool negate_child_exit_code = false;
 
 uint32_t mask = 0;
 char *prog = NULL;
@@ -529,6 +530,16 @@ void parse_options(int argc, char **argv)
 				exit_with_child = true;
 				if(optarg)
 				{
+					if(*optarg == '!')
+					{
+						negate_child_exit_code = true;
+						++optarg;
+					}
+					if(*optarg == '\0')
+					{
+						logerror("Please specify the exit code\n");
+						exit(EXIT_FAILURE);
+					}
 					awaited_child_exit_code = atoi(optarg);
 				}
 				break;
@@ -642,7 +653,12 @@ void child_handler(int signum, siginfo_t *info, void *context)
 			adhocify_exit_code = WEXITSTATUS(status);
 			if(awaited_child_exit_code > -1)
 			{
-				if(adhocify_exit_code == awaited_child_exit_code)
+				bool must_exit = adhocify_exit_code == awaited_child_exit_code;
+				if(negate_child_exit_code)
+				{
+					must_exit = !must_exit;
+				}
+				if(must_exit)
 				{
 					logwrite("child exited with specified exit code, exiting too\n");
 					exit(adhocify_exit_code);

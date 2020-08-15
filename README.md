@@ -62,6 +62,8 @@ adhocify -m IN_CREATE --exit-with-child=0 -- /usr/bin/test -f awaited_file
 ```
 Keep running until the file named "awaited_file" is created in the current directory.
 
+`--exit-with-child` also supports negation, so e. g. with `--exit-with-child='!0'` adhocify would keep running as long as the child commands exits with 0.
+
 Other tools
 ===========
 If adhocify does not suit your needs, take a look at:
