@@ -262,11 +262,10 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 			}
 		}
 
-	
 		if(! noenv)
 		{
 			char envvar[30];
-			snprintf(envvar, sizeof(envvar), "adhocifyevent=%"PRIu32, eventmask); 
+			snprintf(envvar, sizeof(envvar), "ADHOCIFYEVENT=%"PRIu32, eventmask);
 			putenv(envvar);
 		}
 		
