@@ -103,7 +103,8 @@ char *xrealpath(const char *path, char *resolved_path)
 	char *tmp = realpath(path, resolved_path);
 	if(tmp == NULL)
 	{
-		perror("realpath");
+		char *errorstr = strerror(errno);
+		fprintf(stderr, "realpath on %s failed: %s\n", path, errorstr);
 		exit(EXIT_FAILURE);
 	}
 	return tmp;
