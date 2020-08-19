@@ -498,7 +498,7 @@ void parse_options(int argc, char **argv)
 			case 'm':
 				optmask = nameToMask(optarg);
 				if(optmask == 0) { 
-					logerror("Not supported inotify event: %s\n", optmask); 
+					logerror("Not supported inotify event: %s\n", optarg);
 					exit(EXIT_FAILURE); 
 				}
 				mask |= optmask;
