@@ -5,10 +5,6 @@ adhocify uses inotify to watch for file system events. Once an event
 occurs it can execute a command. The path of the file and the event
 will be passed to that command.
  
-Requirements
-============
-adhocify only runs on Linux. You need a kernel and libc with inotify 
-support - pretty much all satisfy this condition.
 
 Options
 =======
@@ -76,3 +72,23 @@ Other tools
 ===========
 If adhocify does not suit your needs, take a look at:
   * inotify-tools: https://github.com/rvoicilas/inotify-tools/wiki
+
+Install
+=======
+
+## Debian / Ubuntu
+Latest release can be installed using apt
+```
+curl -s https://repo.quitesimple.org/repo.quitesimple.org.asc | sudo apt-key add -
+echo "deb https://repo.quitesimple.org/debian/ default main" | sudo tee /etc/apt/sources.list.d/quitesimple.list
+sudo apt-get update
+sudo apt-get install adhocify
+```
+
+## Other
+To install from source, run 
+```
+make install
+```
+
+which will place adhocify in /usr/local/bin/
