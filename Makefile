@@ -1,10 +1,13 @@
 prefix = /usr/local
 bindir = $(prefix)/bin
-
+CFLAGS = -std=c99 -Wall -Wextra -pedantic
 all:
-	$(CC) adhocify.c -g -std=c99 -Wall -Wextra -pedantic -o adhocify
+	$(CC) adhocify.c -g $(CFLAGS) -o adhocify
 
-install: adhocify
+release:
+	$(CC) adhocify.c $(CFLAGS) -o adhocify
+
+install: release
 	install -D adhocify $(DESTDIR)$(bindir)/adhocify
 
 .PHONY: install
