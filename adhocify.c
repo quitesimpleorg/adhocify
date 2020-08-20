@@ -37,7 +37,12 @@
 #include <linux/limits.h>
 #define BUF_SIZE (sizeof(struct inotify_event) + NAME_MAX + 1) * 1024
 #define STREQ(s1,s2) ( strcmp(s1,s2) == 0 )
-#define SCRIPT_PLACE_SPECIFIER "{}" //TODO: think of a better name...
+
+
+#define SCRIPT_PLACE_SPECIFIER "{}" //same as EVENTFILE_PLACEHOLDER for backwards compatibility 
+#define EVENTFILE_PLACEHOLDER "%eventfilepath%"
+#define EVENTSTR_PLACEHOLDER "%eventmaskstr%"
+
 struct watchlistentry
 {
 	int ifd;
@@ -248,6 +253,74 @@ bool redirect_stdout(const char *outfile)
 	return true;
 }
 
+const char *mask_to_names(int mask)
+{
+	static char ret[1024];
+	size_t n = sizeof(ret) - 1;
+	if(mask & IN_ATTRIB)
+	{
+		strncat(ret, "IN_ATTRIB,",n);
+	}
+	if(mask & IN_OPEN)
+	{
+		strncat(ret, "IN_OPEN,", n);
+	}
+	if(mask & IN_CLOSE)
+	{
+		strncat(ret, "IN_CLOSE,", n);
+	}
+	if(mask & IN_CLOSE_NOWRITE)
+	{
+		strncat(ret, "IN_CLOSE,", n);
+	}
+	if(mask & IN_CLOSE_WRITE)
+	{
+		strncat(ret, "IN_CLOSE_WRITE,", n);
+	}
+	if(mask & IN_CREATE)
+	{
+		strncat(ret, "IN_CREATE,", n);
+	}
+	if(mask & IN_DELETE)
+	{
+		strncat(ret, "IN_DELETE,", n);
+	}
+	if(mask & IN_DELETE_SELF)
+	{
+		strncat(ret, "IN_DELETE_SELF,", n);
+	}
+	if(mask & IN_MODIFY)
+	{
+		strncat(ret, "IN_MODIFY,", n);
+	}
+	if(mask & IN_MOVE)
+	{
+		strncat(ret, "IN_MOVE,", n);
+	}
+	if(mask & IN_MOVE_SELF)
+	{
+		strncat(ret, "IN_MOVE_SELF,", n);
+	}
+	if(mask & IN_MOVED_FROM)
+	{
+		strncat(ret, "IN_MOVED_FROM,", n);
+	}
+	if(mask & IN_MOVED_TO)
+	{
+		strncat(ret, "IN_MOVED_TO,", n);
+	}
+
+	for(int i = n; i >= 0; --i)
+	{
+		if(ret[i] == ',')
+		{
+			ret[i] = 0;
+			break;
+		}
+	}
+	ret[1023] = 0;
+	return ret;
+}
 
 bool run_prog(const char *eventfile,  uint32_t eventmask)
 {
@@ -269,13 +342,20 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 			putenv(envvar);
 		}
 		
-		//This can be thrown away, if in create_script_args we create pointer to the pointer pointing to the SCRIPT_PLACE_SPECIFIER string. 
-		//Then all what we have to do here is to set the pointer to eventfile. However, we can have multiple of those, probably not worth it as we shouldn't have tons of arguments
 		for(unsigned int i = 0; i < n_script_arguments; i++)
 		{
 			char *argument = script_arguments[i];
-			if(argument && STREQ(argument, SCRIPT_PLACE_SPECIFIER))
-				script_arguments[i] = eventfile;
+			if(argument != NULL)
+			{
+				if(STREQ(argument, SCRIPT_PLACE_SPECIFIER) || STREQ(argument, EVENTFILE_PLACEHOLDER))
+				{
+					script_arguments[i] = eventfile;
+				}
+				if(STREQ(argument, EVENTSTR_PLACEHOLDER))
+				{
+					script_arguments[i] = mask_to_names(eventmask);
+				}
+			}
 		}
 		
 		execvp(prog, script_arguments);
@@ -293,7 +373,7 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 
 }
 
-uint32_t nameToMask(const char *name)
+uint32_t name_to_mask(const char *name)
 { 
 	if(STREQ(name, "IN_CLOSE_WRITE"))
 		return IN_CLOSE_WRITE;
@@ -325,7 +405,6 @@ uint32_t nameToMask(const char *name)
 		return IN_MOVE;
 	else
 		return 0;
-
 }
 
 void check_forkbomb(const char *path_logfile, const char *path_prog)
@@ -496,7 +575,7 @@ void parse_options(int argc, char **argv)
 				path_logfile = optarg;
 				break;
 			case 'm':
-				optmask = nameToMask(optarg);
+				optmask = name_to_mask(optarg);
 				if(optmask == 0) { 
 					logerror("Not supported inotify event: %s\n", optarg);
 					exit(EXIT_FAILURE); 
