@@ -406,11 +406,11 @@ void handle_event(struct inotify_event *event)
 			free(eventfile_abspath);
 			return;
 		}
-		logwrite("Starting execution of child %s\n", prog);
+		logwrite("Starting execution of command %s\n", prog);
 		bool r = run_prog(eventfile_abspath, event->mask);
 		if(!r) 
 		{
-			logerror("Execution of child %s failed\n", prog);
+			logerror("Execution of command %s failed\n", prog);
 			exit(EXIT_FAILURE);
 		}
 		
@@ -661,7 +661,7 @@ void child_handler(int signum, siginfo_t *info, void *context)
 			}
 			if(must_exit)
 			{
-				logwrite("child exited with specified exit code, exiting too\n");
+				logwrite("command exited with specified exit code, exiting too\n");
 				exit(adhocify_exit_code);
 			}
 		}
