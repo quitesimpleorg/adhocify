@@ -278,8 +278,8 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 				script_arguments[i] = eventfile;
 		}
 		
-		execv(prog, script_arguments);
-		perror("execv");
+		execvp(prog, script_arguments);
+		logerror("Exec of %s failed: %s\n", prog, strerror(errno));
 		return false;
 	}
 	if(pid == -1)
@@ -577,12 +577,6 @@ void process_options()
 		mask |= IN_CLOSE_WRITE;
 	}	
 	
-	if(! file_exists(prog))
-	{
-		fprintf(stderr, "File %s does not exist\n", prog);
-		exit(EXIT_FAILURE);
-	}
-	
 	if(path_logfile)
 	{
 		path_logfile = xrealpath(path_logfile, NULL);
@@ -590,8 +584,12 @@ void process_options()
 
 	if(forkbombcheck)
 	{
-		char *path_prog = xrealpath(prog, NULL);
-		check_forkbomb(path_logfile, path_prog);
+		char *path_prog = realpath(prog, NULL);
+		if(path_prog != NULL)
+		{
+			check_forkbomb(path_logfile, path_prog);
+		}
+		free(path_prog);
 	}
 
 	if(daemonize)
@@ -627,7 +625,7 @@ void start_monitoring(int ifd)
 				handle_event(event);
 				offset+=sizeof(struct inotify_event) + event->len;
 			}
-	}              
+	}
 }
 
 void child_handler(int signum, siginfo_t *info, void *context)
