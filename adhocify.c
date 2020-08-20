@@ -280,7 +280,8 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 		
 		execvp(prog, script_arguments);
 		logerror("Exec of %s failed: %s\n", prog, strerror(errno));
-		return false;
+		int exitcode = (errno == ENOENT) ? 127 : EXIT_FAILURE;
+		exit(exitcode);
 	}
 	if(pid == -1)
 	{
@@ -337,7 +338,6 @@ void check_forkbomb(const char *path_logfile, const char *path_prog)
 	{
 		if(lkp->isdir)
 		{
-
 			char *dir_lkpPath = lkp->path;
 			if( STREQ(dir_lkpPath, dir_log)	|| STREQ(dir_lkpPath, dir_prog) )
 			{
@@ -642,36 +642,37 @@ void child_handler(int signum, siginfo_t *info, void *context)
 		logerror("waitpid failed when handling child exit\n");
 		exit(EXIT_FAILURE);
 	}
-	if(exit_with_child)
+
+	int adhocify_exit_code = 0;
+	if(WIFEXITED(status))
 	{
-		int adhocify_exit_code = 0;
-		if(WIFEXITED(status))
+		adhocify_exit_code = WEXITSTATUS(status);
+		if(adhocify_exit_code == 127)
 		{
-			adhocify_exit_code = WEXITSTATUS(status);
-			if(awaited_child_exit_code > -1)
+			logwrite("command not found, exiting\n");
+			exit(adhocify_exit_code);
+		}
+		if(exit_with_child && awaited_child_exit_code > -1)
+		{
+			bool must_exit = adhocify_exit_code == awaited_child_exit_code;
+			if(negate_child_exit_code)
 			{
-				bool must_exit = adhocify_exit_code == awaited_child_exit_code;
-				if(negate_child_exit_code)
-				{
-					must_exit = !must_exit;
-				}
-				if(must_exit)
-				{
-					logwrite("child exited with specified exit code, exiting too\n");
-					exit(adhocify_exit_code);
-				}
-				return; //not the exit code we wanted, keep running
+				must_exit = !must_exit;
+			}
+			if(must_exit)
+			{
+				logwrite("child exited with specified exit code, exiting too\n");
+				exit(adhocify_exit_code);
 			}
 		}
-		if(WIFSIGNALED(status))
-		{
-			adhocify_exit_code = 128 + WTERMSIG(status); //copy bash's behaviour
-		}
-		//TODO: coredump?
+	}
+	if(exit_with_child && WIFSIGNALED(status))
+	{
+		adhocify_exit_code = 128 + WTERMSIG(status); //copy bash's behaviour
 		exit(adhocify_exit_code);
 	}
-
 }
+
 void set_signals()
 {
 	struct sigaction action;
