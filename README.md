@@ -58,7 +58,7 @@ adhocify -w /tmp/ -w /var/run /home/user/myscript.sh {}
 Passes the full path of the file an event occured on to the specified command. It can be retreived from argv[1] in the called command.
 
 ```
-adhocify -w /tmp/ /bin/echo the file {} was written to
+adhocify -w /tmp/ echo the file {} was written to
 ```
 Running echo "Test" > /tmp/test will print in the shell adhocify was launched in: "the file /tmp/test was written to"
 
@@ -67,6 +67,31 @@ adhocify -m IN_CREATE -m IN_CLOSE_WRITE -w /path -- /bin/env
 ```
 
 adhocify passes the inotify event to the command as an environment variable. The variable is called ```ADHOCIFYEVENT``` and contains the value of inotify_event->mask as set by inotify.
+
+#### Receiving events as strings
+You can also get a string of the inotify events. This is particularly useful if you have a shellscript and don't want to interpret the ```ADHOCIFYEVENT``` variable yourself 
+```
+echo "test" > /tmp/test
+adhocify -m IN_ALL_EVENTS -w /tmp/test echo File: "%eventfilepath%" Event: "%eventmaskstr%"
+#second shell commands
+Starting execution of command echo
+File: /tmp/test Event: IN_ATTRIB
+Starting execution of command echo
+Starting execution of command echo
+Starting execution of command echo
+File: /tmp/test Event: IN_OPEN
+File: /tmp/test Event: IN_CLOSE,IN_CLOSE_WRITE
+File: /tmp/test Event: IN_MODIFY
+
+```
+A second shell ran
+```
+chmod 600 /tmp/test
+echo "test" >> /tmp/test
+```
+
+Passing ```-q``` would also keep adhocify silent, surpressing those "Starting execution..." messages.
+
 
 Other tools
 ===========
