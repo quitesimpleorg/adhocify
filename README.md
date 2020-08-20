@@ -85,6 +85,14 @@ sudo apt-get update
 sudo apt-get install adhocify
 ```
 
+## Alpine
+```
+wget https://repo.quitesimple.org/repo%40quitesimple.org-5f3d101.rsa.pub -O /etc/apk/repo@quitesimple.org-5f3d101.rsa.pub
+echo "https://repo.quitesimple.org/alpine/quitesimple/" >> /etc/apk/repositories
+apk update
+apk add adhocify
+```
+
 ## Other
 To install from source, run 
 ```
