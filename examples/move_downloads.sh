@@ -4,6 +4,7 @@
 #adhocify -d -m IN_CLOSE_WRITE -m IN_MOVED_TO -w /home/user/Downloads -w /home/user/other_dir /path/to/move_downloads.sh
 
 INCOMING="$1"
+stat -c"%s" "$INCOMING" | grep -q "^0$" && exit
 #ignore partial downloads (.part in firefox, .crdownload in chrome)
 echo "$INCOMING" | grep -q .part$ && exit 
 echo "$INCOMING" | grep -q .crdownload$ && exit
