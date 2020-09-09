@@ -73,7 +73,6 @@ You can also get a string of the inotify events. This is particularly useful if 
 ```
 echo "test" > /tmp/test
 adhocify -m IN_ALL_EVENTS -w /tmp/test echo File: "%eventfilepath%" Event: "%eventmaskstr%"
-#second shell commands
 Starting execution of command echo
 File: /tmp/test Event: IN_ATTRIB
 Starting execution of command echo
