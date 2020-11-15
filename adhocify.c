@@ -13,7 +13,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#define  _GNU_SOURCE
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,10 +36,9 @@
 #include <ftw.h>
 #include <linux/limits.h>
 #define BUF_SIZE (sizeof(struct inotify_event) + NAME_MAX + 1) * 1024
-#define STREQ(s1,s2) ( strcmp(s1,s2) == 0 )
+#define STREQ(s1, s2) (strcmp(s1, s2) == 0)
 
-
-#define SCRIPT_PLACE_SPECIFIER "{}" //same as EVENTFILE_PLACEHOLDER for backwards compatibility 
+#define SCRIPT_PLACE_SPECIFIER "{}" // same as EVENTFILE_PLACEHOLDER for backwards compatibility
 #define EVENTFILE_PLACEHOLDER "%eventfilepath%"
 #define EVENTSTR_PLACEHOLDER "%eventmaskstr%"
 
@@ -54,8 +53,6 @@ struct watchlistentry
 struct watchlistentry *watchlist_head = NULL;
 struct watchlistentry **watchlist = &watchlist_head;
 
-
-
 struct ignorelist
 {
 	char *ignore;
@@ -65,13 +62,12 @@ struct ignorelist
 struct ignorelist *ignorelist_head = NULL;
 struct ignorelist **ignorelist_current = &ignorelist_head;
 
-
 /* Write-once globals. Set from process_arguments*/
 bool silent = false;
 bool noenv = false;
 bool fromstdin = false;
 bool forkbombcheck = true;
-bool daemonize  = false;
+bool daemonize = false;
 bool exit_with_child = false;
 int awaited_child_exit_code = -1;
 bool negate_child_exit_code = false;
@@ -79,15 +75,15 @@ bool negate_child_exit_code = false;
 uint32_t mask = 0;
 char *prog = NULL;
 char *path_logfile = NULL;
-char **script_arguments = NULL; //options to be passed to script we are calling 
+char **script_arguments = NULL; // options to be passed to script we are calling
 size_t n_script_arguments = 0;
 
 void *xmalloc(size_t size)
 {
 	void *m = malloc(size);
-	if(m == NULL) 
+	if(m == NULL)
 	{
-		perror("malloc"); 
+		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
 	return m;
@@ -116,12 +112,11 @@ char *xrealpath(const char *path, char *resolved_path)
 	return tmp;
 }
 
-
 char *ndirname(const char *path)
 {
 	if(path == NULL)
 	{
-		return xstrdup("."); 
+		return xstrdup(".");
 	}
 	char *c = strdupa(path);
 	return xstrdup(dirname(c));
@@ -130,8 +125,8 @@ char *ndirname(const char *path)
 char *find_ifd_path(int ifd)
 {
 	for(struct watchlistentry *lkp = watchlist_head; lkp != NULL; lkp = lkp->next)
-	{	
-		if(lkp->ifd == ifd) 
+	{
+		if(lkp->ifd == ifd)
 		{
 			return lkp->path;
 		}
@@ -165,19 +160,16 @@ bool path_is_directory(const char *path)
 
 static inline bool file_exists(const char *path)
 {
-	return access(path, F_OK) == 0; 
+	return access(path, F_OK) == 0;
 }
-
 
 void add_to_ignore_list(const char *str)
 {
 	*ignorelist_current = xmalloc(sizeof(struct ignorelist));
 	(*ignorelist_current)->ignore = xstrdup(str);
 
-	ignorelist_current = &(*ignorelist_current)->next; 
+	ignorelist_current = &(*ignorelist_current)->next;
 }
-
-
 
 void logwrite(const char *format, ...)
 {
@@ -196,14 +188,13 @@ void logerror(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	char *prefix = "Error: "; 
+	char *prefix = "Error: ";
 	char *tmp = alloca(strlen(format) + strlen(prefix) + 1);
 	strcpy(tmp, prefix);
 	strcat(tmp, format);
 	vfprintf(stderr, tmp, args);
 	fflush(stderr);
 	va_end(args);
-
 }
 
 void watchqueue_add_path(const char *pathname)
@@ -215,24 +206,22 @@ void watchqueue_add_path(const char *pathname)
 	e->path = path;
 	e->isdir = path_is_directory(pathname);
 	e->next = NULL;
-	watchlist= &e->next;
+	watchlist = &e->next;
 }
-
-
 
 void create_watches(int fd, uint32_t mask)
 {
 	for(struct watchlistentry *lkp = watchlist_head; lkp != NULL; lkp = lkp->next)
 	{
 		int ret = inotify_add_watch(fd, lkp->path, mask);
-		if(ret == -1) 
+		if(ret == -1)
 		{
-			perror("inotify_add_watch"); 
-			exit(EXIT_FAILURE); 
+			perror("inotify_add_watch");
+			exit(EXIT_FAILURE);
 		}
 
 		lkp->ifd = ret;
-	}	
+	}
 }
 
 bool redirect_stdout(const char *outfile)
@@ -259,7 +248,7 @@ const char *mask_to_names(int mask)
 	size_t n = sizeof(ret) - 1;
 	if(mask & IN_ATTRIB)
 	{
-		strncat(ret, "IN_ATTRIB,",n);
+		strncat(ret, "IN_ATTRIB,", n);
 	}
 	if(mask & IN_OPEN)
 	{
@@ -322,26 +311,26 @@ const char *mask_to_names(int mask)
 	return ret;
 }
 
-bool run_prog(const char *eventfile,  uint32_t eventmask)
+bool run_prog(const char *eventfile, uint32_t eventmask)
 {
 	pid_t pid = fork();
 	if(pid == 0)
 	{
 		if(path_logfile)
 		{
-			if(! redirect_stdout(path_logfile))
+			if(!redirect_stdout(path_logfile))
 			{
-				return false;	
+				return false;
 			}
 		}
 
-		if(! noenv)
+		if(!noenv)
 		{
 			char envvar[30];
-			snprintf(envvar, sizeof(envvar), "ADHOCIFYEVENT=%"PRIu32, eventmask);
+			snprintf(envvar, sizeof(envvar), "ADHOCIFYEVENT=%" PRIu32, eventmask);
 			putenv(envvar);
 		}
-		
+
 		for(unsigned int i = 0; i < n_script_arguments; i++)
 		{
 			char *argument = script_arguments[i];
@@ -357,7 +346,7 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 				}
 			}
 		}
-		
+
 		execvp(prog, script_arguments);
 		logerror("Exec of %s failed: %s\n", prog, strerror(errno));
 		int exitcode = (errno == ENOENT) ? 127 : EXIT_FAILURE;
@@ -367,14 +356,13 @@ bool run_prog(const char *eventfile,  uint32_t eventmask)
 	{
 		perror("fork");
 		return false;
-	}	
+	}
 
 	return true;
-
 }
 
 uint32_t name_to_mask(const char *name)
-{ 
+{
 	if(STREQ(name, "IN_CLOSE_WRITE"))
 		return IN_CLOSE_WRITE;
 	else if(STREQ(name, "IN_OPEN"))
@@ -410,7 +398,7 @@ uint32_t name_to_mask(const char *name)
 void check_forkbomb(const char *path_logfile, const char *path_prog)
 {
 	char *dir_log = ndirname(path_logfile);
-	char *dir_prog = ndirname(path_prog);	
+	char *dir_prog = ndirname(path_prog);
 
 	struct watchlistentry *lkp = watchlist_head;
 	while(lkp)
@@ -418,9 +406,10 @@ void check_forkbomb(const char *path_logfile, const char *path_prog)
 		if(lkp->isdir)
 		{
 			char *dir_lkpPath = lkp->path;
-			if( STREQ(dir_lkpPath, dir_log)	|| STREQ(dir_lkpPath, dir_prog) )
+			if(STREQ(dir_lkpPath, dir_log) || STREQ(dir_lkpPath, dir_prog))
 			{
-				logerror("Don't place your logfiles or command in a directory you are watching for events. Pass -b to bypass this check.\n");
+				logerror("Don't place your logfiles or command in a directory you are watching for events. Pass -b to "
+						 "bypass this check.\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -435,12 +424,12 @@ void check_forkbomb(const char *path_logfile, const char *path_prog)
 void queue_watches_from_stdin()
 {
 	char *line = NULL;
-	size_t n = 0; 
+	size_t n = 0;
 	ssize_t r;
 	while((r = getline(&line, &n, stdin)) != -1)
 	{
-		if(line[r-1] == '\n') 
-			line[r-1] = 0;
+		if(line[r - 1] == '\n')
+			line[r - 1] = 0;
 		watchqueue_add_path(line);
 	}
 }
@@ -452,9 +441,9 @@ char *get_eventfile_abspath(struct inotify_event *event)
 	{
 		return NULL;
 	}
-	
+
 	char *result = NULL;
-	if((event->len) > 0 )
+	if((event->len) > 0)
 	{
 		if(asprintf(&result, "%s/%s", wdpath, event->name) == -1)
 		{
@@ -468,171 +457,174 @@ char *get_eventfile_abspath(struct inotify_event *event)
 	return result;
 }
 
-
 void handle_event(struct inotify_event *event)
 {
-	if(event->mask & mask) 
-	{	
+	if(event->mask & mask)
+	{
 		char *eventfile_abspath = get_eventfile_abspath(event);
 		if(eventfile_abspath == NULL)
 		{
 			logerror("Could not get absolute path for event. Watch descriptor %i\n", event->wd);
 			exit(EXIT_FAILURE);
 		}
-		
-		if(is_ignored(eventfile_abspath)) 
+
+		if(is_ignored(eventfile_abspath))
 		{
 			free(eventfile_abspath);
 			return;
 		}
 		logwrite("Starting execution of command %s\n", prog);
 		bool r = run_prog(eventfile_abspath, event->mask);
-		if(!r) 
+		if(!r)
 		{
 			logerror("Execution of command %s failed\n", prog);
 			exit(EXIT_FAILURE);
 		}
-		
+
 		fflush(stdout);
 		fflush(stderr);
-		
-		free (eventfile_abspath);
+
+		free(eventfile_abspath);
 	}
 }
 
 static inline char *get_cwd()
 {
-	return getcwd(NULL,0); 
+	return getcwd(NULL, 0);
 }
 
 void print_usage()
 {
 	printf("adhocify [OPTIONS] command [arguments for command] - Monitor for inotify events and launch commands\n\n");
-    printf("--daemon, -d            run as a daemon\n");
+	printf("--daemon, -d            run as a daemon\n");
 	printf("--path, -w              adds the specified path to the watchlist\n");
 	printf("--logfile, -o           path to write output of adhocify and stdout/stderr of launched commands to\n");
-	printf("--mask, -m              inotify event to watch for (see inotify(7)). Can be specified multiple times to watch for several events\n");
-	printf("--no-env, -a            if specified, the inotify event which occured won't be passed to the command as an environment variable\n");
+	printf("--mask, -m              inotify event to watch for (see inotify(7)). Can be specified multiple times to "
+		   "watch for several events\n");
+	printf("--no-env, -a            if specified, the inotify event which occured won't be passed to the command as an "
+		   "environment variable\n");
 	printf("--silent, -q            surpress any output created by adhocify itself\n");
-	printf("--stdin, -s             Read the paths which must be added to the watchlist from stdin. Each path must be in a seperate line\n");
+	printf("--stdin, -s             Read the paths which must be added to the watchlist from stdin. Each path must be "
+		   "in a seperate line\n");
 	printf("--no-forkbomb-check, -b Disable fork bomb detection\n");
-	printf("--ignore, -i            Shell wildcard pattern (see glob(7)) to ignore events on files for which the pattern matches\n");
-	printf("--exit-with-child, -e   Exit when the commands exits. You can also specify a return code (e. g. -e=1 to exit only on errors)\n");	printf("\nIf your command should know the file the event occured on, use the {} placeholder when you specify the arguments (like xargs)\n");
+	printf("--ignore, -i            Shell wildcard pattern (see glob(7)) to ignore events on files for which the "
+		   "pattern matches\n");
+	printf("--exit-with-child, -e   Exit when the commands exits. You can also specify a return code (e. g. -e=1 to "
+		   "exit only on errors)\n");
+	printf("\nIf your command should know the file the event occured on, use the {} placeholder when you specify the "
+		   "arguments (like xargs)\n");
 }
 
-static struct option long_options[] = 
-{
-  { "daemon", no_argument, 0, 'd' },
-  { "logfile", required_argument, 0, 'o' },
-  { "mask", required_argument, 0, 'm' },
-  { "path", required_argument, 0, 'w' },
-  { "no-env", no_argument, 0, 'a' },
-  { "stdin", no_argument, 0, 's' },
-  { "no-forkbomb-check", no_argument, 0, 'b' },
-  { "ignore", required_argument, 0, 'i' },  
-  { "silent", no_argument, 0, 'q' },
-  { "help", no_argument, 0, 'h' },
-  { "exit-with-child", optional_argument, 0, 'e' }
-};
+static struct option long_options[] = {{"daemon", no_argument, 0, 'd'},
+									   {"logfile", required_argument, 0, 'o'},
+									   {"mask", required_argument, 0, 'm'},
+									   {"path", required_argument, 0, 'w'},
+									   {"no-env", no_argument, 0, 'a'},
+									   {"stdin", no_argument, 0, 's'},
+									   {"no-forkbomb-check", no_argument, 0, 'b'},
+									   {"ignore", required_argument, 0, 'i'},
+									   {"silent", no_argument, 0, 'q'},
+									   {"help", no_argument, 0, 'h'},
+									   {"exit-with-child", optional_argument, 0, 'e'}};
 
-//fills global n_script_arguments and script_arguments var
+// fills global n_script_arguments and script_arguments var
 void fill_script_arguments(size_t n_args, char *args[])
 {
-		n_script_arguments = n_args + 2; //2 = argv0 and terminating NULL
-		
-		char **arguments = xmalloc( n_script_arguments * sizeof(char *) ); 
-		
-		const char *argv0 = memrchr(prog, '/', strlen(prog));
-		argv0 = ( argv0 == NULL ) ? prog : argv0+1;
-		arguments[0] = argv0;
-		
-		const int begin_offset = 1;
-		for(unsigned int i = 0; i < n_args; i++)
-		{
-			char *argument = args[i];
-			arguments[i+begin_offset] = strdup(argument); 
-		}
-		arguments[n_args+begin_offset] = NULL;
-		
-		script_arguments = arguments;
-}
+	n_script_arguments = n_args + 2; // 2 = argv0 and terminating NULL
 
+	char **arguments = xmalloc(n_script_arguments * sizeof(char *));
+
+	const char *argv0 = memrchr(prog, '/', strlen(prog));
+	argv0 = (argv0 == NULL) ? prog : argv0 + 1;
+	arguments[0] = argv0;
+
+	const int begin_offset = 1;
+	for(unsigned int i = 0; i < n_args; i++)
+	{
+		char *argument = args[i];
+		arguments[i + begin_offset] = strdup(argument);
+	}
+	arguments[n_args + begin_offset] = NULL;
+
+	script_arguments = arguments;
+}
 
 void parse_options(int argc, char **argv)
 {
 	char *watchpath = NULL;
 	int option;
-    int option_index;
-    uint32_t optmask = 0; 
+	int option_index;
+	uint32_t optmask = 0;
 	while((option = getopt_long(argc, argv, "absdo:w:m:l:i:e::", long_options, &option_index)) != -1)
 	{
 		switch(option)
 		{
-			case 'd':
-				daemonize = true;
-				break;
-			case 'o':
-				path_logfile = optarg;
-				break;
-			case 'm':
-				optmask = name_to_mask(optarg);
-				if(optmask == 0) { 
-					logerror("Not supported inotify event: %s\n", optarg);
-					exit(EXIT_FAILURE); 
-				}
-				mask |= optmask;
-				break;
-			case 'w':
-				watchpath = optarg;
-				watchqueue_add_path(watchpath);
-				break;
-			case 'a':
-				noenv=true;
-				break;
-			case 's':
-				fromstdin=true;
-				break;
-			case 'b':
-				forkbombcheck=false;
-				break;
-			case 'i':
-				add_to_ignore_list(optarg);
-				break;
-			case 'q':
-				silent=true;
-				break;
-			case 'h':
-				print_usage();
-				exit(EXIT_SUCCESS);
-			case 'e':
-				exit_with_child = true;
-				if(optarg)
+		case 'd':
+			daemonize = true;
+			break;
+		case 'o':
+			path_logfile = optarg;
+			break;
+		case 'm':
+			optmask = name_to_mask(optarg);
+			if(optmask == 0)
+			{
+				logerror("Not supported inotify event: %s\n", optarg);
+				exit(EXIT_FAILURE);
+			}
+			mask |= optmask;
+			break;
+		case 'w':
+			watchpath = optarg;
+			watchqueue_add_path(watchpath);
+			break;
+		case 'a':
+			noenv = true;
+			break;
+		case 's':
+			fromstdin = true;
+			break;
+		case 'b':
+			forkbombcheck = false;
+			break;
+		case 'i':
+			add_to_ignore_list(optarg);
+			break;
+		case 'q':
+			silent = true;
+			break;
+		case 'h':
+			print_usage();
+			exit(EXIT_SUCCESS);
+		case 'e':
+			exit_with_child = true;
+			if(optarg)
+			{
+				if(*optarg == '!')
 				{
-					if(*optarg == '!')
-					{
-						negate_child_exit_code = true;
-						++optarg;
-					}
-					if(*optarg == '\0')
-					{
-						logerror("Please specify the exit code\n");
-						exit(EXIT_FAILURE);
-					}
-					awaited_child_exit_code = atoi(optarg);
+					negate_child_exit_code = true;
+					++optarg;
 				}
-				break;
-		}	
+				if(*optarg == '\0')
+				{
+					logerror("Please specify the exit code\n");
+					exit(EXIT_FAILURE);
+				}
+				awaited_child_exit_code = atoi(optarg);
+			}
+			break;
+		}
 	}
-	
-	if(optind == argc) 
-	{ 
+
+	if(optind == argc)
+	{
 		print_usage();
 		logerror("missing command path\n");
-		exit(EXIT_FAILURE); 
+		exit(EXIT_FAILURE);
 	}
-	
+
 	prog = argv[optind++];
-	
+
 	if(optind <= argc)
 	{
 		fill_script_arguments(argc - optind, &argv[optind]);
@@ -654,8 +646,8 @@ void process_options()
 	if(mask == 0)
 	{
 		mask |= IN_CLOSE_WRITE;
-	}	
-	
+	}
+
 	if(path_logfile)
 	{
 		path_logfile = xrealpath(path_logfile, NULL);
@@ -673,7 +665,7 @@ void process_options()
 
 	if(daemonize)
 	{
-		if(daemon(0,0) == -1)
+		if(daemon(0, 0) == -1)
 		{
 			perror("daemon");
 			exit(EXIT_FAILURE);
@@ -683,27 +675,27 @@ void process_options()
 
 void start_monitoring(int ifd)
 {
-	while(1) 
+	while(1)
 	{
-			int len;
-			int offset =0;
-			char buf[BUF_SIZE];
-			len = read(ifd, buf, BUF_SIZE);
-			if(len == -1) 
-			{
-				if(errno == EINTR) 
-					continue;
-				perror("read");
-				exit(EXIT_FAILURE);
-			}
+		int len;
+		int offset = 0;
+		char buf[BUF_SIZE];
+		len = read(ifd, buf, BUF_SIZE);
+		if(len == -1)
+		{
+			if(errno == EINTR)
+				continue;
+			perror("read");
+			exit(EXIT_FAILURE);
+		}
 
-			while(offset < len)
-			{
+		while(offset < len)
+		{
 
-				struct inotify_event *event = (struct inotify_event *)&buf[offset];
-				handle_event(event);
-				offset+=sizeof(struct inotify_event) + event->len;
-			}
+			struct inotify_event *event = (struct inotify_event *)&buf[offset];
+			handle_event(event);
+			offset += sizeof(struct inotify_event) + event->len;
+		}
 	}
 }
 
@@ -712,8 +704,8 @@ void child_handler(int signum, siginfo_t *info, void *context)
 	if(signum != SIGCHLD)
 	{
 		return;
-	}	
-	
+	}
+
 	int status;
 	pid_t p = waitpid(-1, &status, WNOHANG);
 	if(p == -1)
@@ -747,7 +739,7 @@ void child_handler(int signum, siginfo_t *info, void *context)
 	}
 	if(exit_with_child && WIFSIGNALED(status))
 	{
-		adhocify_exit_code = 128 + WTERMSIG(status); //copy bash's behaviour
+		adhocify_exit_code = 128 + WTERMSIG(status); // copy bash's behaviour
 		exit(adhocify_exit_code);
 	}
 }
@@ -764,22 +756,20 @@ void set_signals()
 	}
 }
 
-
 int main(int argc, char **argv)
 {
-	if(argc < 2) 
-	{ 
+	if(argc < 2)
+	{
 		print_usage();
 		exit(EXIT_FAILURE);
 	}
 
-	//signal(SIGCHLD, SIG_IGN);
+	// signal(SIGCHLD, SIG_IGN);
 	set_signals();
-	
-	
+
 	parse_options(argc, argv);
 	process_options();
-	
+
 	int ifd = inotify_init();
 	if(ifd == -1)
 	{
