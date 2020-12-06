@@ -95,7 +95,7 @@ Passing ```-q``` would also keep adhocify silent, surpressing those "Starting ex
 Other tools
 ===========
 If adhocify does not suit your needs, take a look at:
-  * inotify-tools: https://github.com/rvoicilas/inotify-tools/wiki
+  * inotify-tools: https://github.com/inotify-tools/inotify-tools/wiki
 
 Install
 =======
