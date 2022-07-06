@@ -103,8 +103,16 @@ Install
 ## Debian / Ubuntu
 Latest release can be installed using apt
 ```
-curl -s https://repo.quitesimple.org/repo.quitesimple.org.asc | sudo apt-key add -
-echo "deb https://repo.quitesimple.org/debian/ default main" | sudo tee /etc/apt/sources.list.d/quitesimple.list
+# First, obtain key, assume it's trusted.
+wget -O- https://repo.quitesimple.org/repo.quitesimple.org.asc  | gpg --dearmor > repo.quitesimple.org-keyring.gpg
+cat repo.quitesimple.org-keyring.gpg | sudo tee -a /usr/share/keyrings/repo.quitesimple.org.gpg > /dev/null
+
+#For Debian
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/repo.quitesimple.org.gpg] https://repo.quitesimple.org/debian/ default main" | sudo tee /etc/apt/sources.list.d/quitesimple.list
+
+#For Ubuntu >=21.10, prefer these sources
+#echo "deb [arch=amd64 signed-by=/usr/share/keyrings/repo.quitesimple.org.gpg] https://repo.quitesimple.org/debian/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/quitesimple.list
+
 sudo apt-get update
 sudo apt-get install adhocify
 ```
