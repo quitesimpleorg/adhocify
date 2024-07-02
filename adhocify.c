@@ -706,41 +706,47 @@ void child_handler(int signum, siginfo_t *info, void *context)
 		return;
 	}
 
-	int status;
-	pid_t p = waitpid(-1, &status, WNOHANG);
-	if(p == -1)
-	{
-		logerror("waitpid failed when handling child exit\n");
-		exit(EXIT_FAILURE);
-	}
-
-	int adhocify_exit_code = 0;
-	if(WIFEXITED(status))
-	{
-		adhocify_exit_code = WEXITSTATUS(status);
-		if(adhocify_exit_code == 127)
+	while (1) {
+		int status;
+		pid_t p = waitpid(-1, &status, WNOHANG);
+		if(p == 0) // No more children to reap
 		{
-			logwrite("command not found, exiting\n");
-			exit(adhocify_exit_code);
+			return; // exits infinite while loop and child_handler() function
 		}
-		if(exit_with_child && awaited_child_exit_code > -1)
+		if(p == -1) // waitpid error
 		{
-			bool must_exit = adhocify_exit_code == awaited_child_exit_code;
-			if(negate_child_exit_code)
+			logerror("waitpid failed when handling child exit\n");
+			exit(EXIT_FAILURE);
+		}
+
+		int adhocify_exit_code = 0;
+		if(WIFEXITED(status))
+		{
+			adhocify_exit_code = WEXITSTATUS(status);
+			if(adhocify_exit_code == 127)
 			{
-				must_exit = !must_exit;
-			}
-			if(must_exit)
-			{
-				logwrite("command exited with specified exit code, exiting too\n");
+				logwrite("command not found, exiting\n");
 				exit(adhocify_exit_code);
 			}
+			if(exit_with_child && awaited_child_exit_code > -1)
+			{
+				bool must_exit = adhocify_exit_code == awaited_child_exit_code;
+				if(negate_child_exit_code)
+				{
+					must_exit = !must_exit;
+				}
+				if(must_exit)
+				{
+					logwrite("command exited with specified exit code, exiting too\n");
+					exit(adhocify_exit_code);
+				}
+			}
 		}
-	}
-	if(exit_with_child && WIFSIGNALED(status))
-	{
-		adhocify_exit_code = 128 + WTERMSIG(status); // copy bash's behaviour
-		exit(adhocify_exit_code);
+		if(exit_with_child && WIFSIGNALED(status))
+		{
+			adhocify_exit_code = 128 + WTERMSIG(status); // copy bash's behaviour
+			exit(adhocify_exit_code);
+		}
 	}
 }
 
