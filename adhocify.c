@@ -709,7 +709,7 @@ void child_handler(int signum, siginfo_t *info, void *context)
 	while (1) {
 		int status;
 		pid_t p = waitpid(-1, &status, WNOHANG);
-		if(p == 0) // No more children to reap
+		if(p == 0 || (p == -1 && errno == ECHILD)) // No more children to reap
 		{
 			return; // exits infinite while loop and child_handler() function
 		}
