@@ -511,7 +511,7 @@ void print_usage()
 	printf("--no-forkbomb-check, -b Disable fork bomb detection\n");
 	printf("--ignore, -i            Shell wildcard pattern (see glob(7)) to ignore events on files for which the "
 		   "pattern matches\n");
-	printf("--exit-with-child, -e   Exit when the commands exits. You can also specify a return code (e. g. -e=1 to "
+	printf("--exit-with-child, -e   Exit when the commands exits. You can also specify a return code and negations (e. g. -e'!0' to "
 		   "exit only on errors)\n");
 	printf("\nIf your command should know the file the event occured on, use the {} placeholder when you specify the "
 		   "arguments (like xargs)\n");
@@ -700,9 +700,9 @@ void wait_for_children()
 				logwrite("command not found, exiting\n");
 				exit(adhocify_exit_code);
 			}
-			if(exit_with_child && awaited_child_exit_code > -1)
+			if(exit_with_child)
 			{
-				bool must_exit = adhocify_exit_code == awaited_child_exit_code;
+				bool must_exit = adhocify_exit_code == awaited_child_exit_code || awaited_child_exit_code == -1;
 				if(negate_child_exit_code)
 				{
 					must_exit = !must_exit;
