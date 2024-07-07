@@ -78,6 +78,8 @@ char *path_logfile = NULL;
 char **script_arguments = NULL; // options to be passed to script we are calling
 size_t n_script_arguments = 0;
 
+volatile sig_atomic_t handle_child_exits = 0;
+
 void *xmalloc(size_t size)
 {
 	void *m = malloc(size);
@@ -673,52 +675,22 @@ void process_options()
 	}
 }
 
-void start_monitoring(int ifd)
+
+void wait_for_children()
 {
 	while(1)
 	{
-		int len;
-		int offset = 0;
-		char buf[BUF_SIZE];
-		len = read(ifd, buf, BUF_SIZE);
-		if(len == -1)
-		{
-			if(errno == EINTR)
-				continue;
-			perror("read");
-			exit(EXIT_FAILURE);
-		}
-
-		while(offset < len)
-		{
-
-			struct inotify_event *event = (struct inotify_event *)&buf[offset];
-			handle_event(event);
-			offset += sizeof(struct inotify_event) + event->len;
-		}
-	}
-}
-
-void child_handler(int signum, siginfo_t *info, void *context)
-{
-	if(signum != SIGCHLD)
-	{
-		return;
-	}
-
-	while (1) {
 		int status;
 		pid_t p = waitpid(-1, &status, WNOHANG);
 		if(p == 0 || (p == -1 && errno == ECHILD)) // No more children to reap
 		{
-			return; // exits infinite while loop and child_handler() function
+			return;
 		}
-		if(p == -1) // waitpid error
+		if(p == -1)
 		{
 			logerror("waitpid failed when handling child exit\n");
 			exit(EXIT_FAILURE);
 		}
-
 		int adhocify_exit_code = 0;
 		if(WIFEXITED(status))
 		{
@@ -748,6 +720,46 @@ void child_handler(int signum, siginfo_t *info, void *context)
 			exit(adhocify_exit_code);
 		}
 	}
+}
+
+void start_monitoring(int ifd)
+{
+	while(1)
+	{
+		if(handle_child_exits)
+		{
+			handle_child_exits = 1;
+			wait_for_children();
+		}
+		int len;
+		int offset = 0;
+		char buf[BUF_SIZE];
+		len = read(ifd, buf, BUF_SIZE);
+		if(len == -1)
+		{
+			if(errno == EINTR)
+				continue;
+			perror("read");
+			exit(EXIT_FAILURE);
+		}
+		while(offset < len)
+		{
+
+			struct inotify_event *event = (struct inotify_event *)&buf[offset];
+			handle_event(event);
+			offset += sizeof(struct inotify_event) + event->len;
+		}
+	}
+}
+
+
+void child_handler(int signum, siginfo_t *info, void *context)
+{
+	if(signum != SIGCHLD)
+	{
+		return;
+	}
+	handle_child_exits = 1;
 }
 
 void set_signals()
