@@ -728,7 +728,7 @@ void start_monitoring(int ifd)
 	{
 		if(handle_child_exits)
 		{
-			handle_child_exits = 1;
+			handle_child_exits = 0;
 			wait_for_children();
 		}
 		int len;
