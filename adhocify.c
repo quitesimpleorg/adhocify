@@ -169,7 +169,7 @@ void add_to_ignore_list(const char *str)
 {
 	*ignorelist_current = xmalloc(sizeof(struct ignorelist));
 	(*ignorelist_current)->ignore = xstrdup(str);
-
+	(*ignorelist_current)->next = NULL;
 	ignorelist_current = &(*ignorelist_current)->next;
 }
 
@@ -246,71 +246,72 @@ bool redirect_stdout(const char *outfile)
 
 const char *mask_to_names(int mask)
 {
-	static char ret[1024];
-	size_t n = sizeof(ret) - 1;
+	char ret[1024] = {0};
+	FILE *f = fmemopen(ret, sizeof(ret), "w");
+	if(f == NULL)
+	{
+		logerror("fmemopen() failed\n");
+		return NULL;
+	}
 	if(mask & IN_ATTRIB)
 	{
-		strncat(ret, "IN_ATTRIB,", n);
+		fputs("IN_ATTRIB,", f);
 	}
 	if(mask & IN_OPEN)
 	{
-		strncat(ret, "IN_OPEN,", n);
+		fputs("IN_OPEN,", f);
 	}
 	if(mask & IN_CLOSE)
 	{
-		strncat(ret, "IN_CLOSE,", n);
+		fputs("IN_CLOSE,", f);
 	}
 	if(mask & IN_CLOSE_NOWRITE)
 	{
-		strncat(ret, "IN_CLOSE,", n);
+		fputs("IN_CLOSE_NOWRITE,", f);
 	}
 	if(mask & IN_CLOSE_WRITE)
 	{
-		strncat(ret, "IN_CLOSE_WRITE,", n);
+		fputs("IN_CLOSE_WRITE,", f);
 	}
 	if(mask & IN_CREATE)
 	{
-		strncat(ret, "IN_CREATE,", n);
+		fputs("IN_CREATE,", f);
 	}
 	if(mask & IN_DELETE)
 	{
-		strncat(ret, "IN_DELETE,", n);
+		fputs("IN_DELETE,", f);
 	}
 	if(mask & IN_DELETE_SELF)
 	{
-		strncat(ret, "IN_DELETE_SELF,", n);
+		fputs("IN_DELETE_SELF,", f);
 	}
 	if(mask & IN_MODIFY)
 	{
-		strncat(ret, "IN_MODIFY,", n);
+		fputs("IN_MODIFY,", f);
 	}
 	if(mask & IN_MOVE)
 	{
-		strncat(ret, "IN_MOVE,", n);
+		fputs("IN_MOVE,", f);
 	}
 	if(mask & IN_MOVE_SELF)
 	{
-		strncat(ret, "IN_MOVE_SELF,", n);
+		fputs("IN_MOVE_SELF,", f);
 	}
 	if(mask & IN_MOVED_FROM)
 	{
-		strncat(ret, "IN_MOVED_FROM,", n);
+		fputs("IN_MOVED_FROM,", f);
 	}
 	if(mask & IN_MOVED_TO)
 	{
-		strncat(ret, "IN_MOVED_TO,", n);
+		fputs("IN_MOVED_TO,", f);
 	}
-
-	for(int i = n; i >= 0; --i)
+	long pos = ftell(f);
+	fclose(f);
+	if(pos > 0)
 	{
-		if(ret[i] == ',')
-		{
-			ret[i] = 0;
-			break;
-		}
+			ret[pos-1] = '\0';
 	}
-	ret[1023] = 0;
-	return ret;
+	return xstrdup(ret);
 }
 
 bool run_prog(const char *eventfile, uint32_t eventmask)
@@ -329,8 +330,13 @@ bool run_prog(const char *eventfile, uint32_t eventmask)
 		if(!noenv)
 		{
 			char envvar[30];
-			snprintf(envvar, sizeof(envvar), "ADHOCIFYEVENT=%" PRIu32, eventmask);
-			putenv(envvar);
+			snprintf(envvar, sizeof(envvar), "%" PRIu32, eventmask);
+			int ret = setenv("ADHOCIFYEVENT", envvar, 1);
+			if(ret != 0)
+			{
+				perror("setenv");
+				exit(EXIT_FAILURE);
+			}
 		}
 
 		for(unsigned int i = 0; i < n_script_arguments; i++)
@@ -344,7 +350,13 @@ bool run_prog(const char *eventfile, uint32_t eventmask)
 				}
 				if(STREQ(argument, EVENTSTR_PLACEHOLDER))
 				{
-					script_arguments[i] = mask_to_names(eventmask);
+					const char *names = mask_to_names(eventmask);
+					if(names == NULL)
+					{
+						logerror("Failed to convert mask to strings");
+						exit(EXIT_FAILURE);
+					}
+					script_arguments[i] = names;
 				}
 			}
 		}
@@ -434,6 +446,7 @@ void queue_watches_from_stdin()
 			line[r - 1] = 0;
 		watchqueue_add_path(line);
 	}
+	free(line);
 }
 
 char *get_eventfile_abspath(struct inotify_event *event)
@@ -507,11 +520,11 @@ void print_usage()
 		   "environment variable\n");
 	printf("--silent, -q            surpress any output created by adhocify itself\n");
 	printf("--stdin, -s             Read the paths which must be added to the watchlist from stdin. Each path must be "
-		   "in a seperate line\n");
+		   "in a seperate line.\n");
 	printf("--no-forkbomb-check, -b Disable fork bomb detection\n");
 	printf("--ignore, -i            Shell wildcard pattern (see glob(7)) to ignore events on files for which the "
 		   "pattern matches\n");
-	printf("--exit-with-child, -e   Exit when the commands exits. You can also specify a return code and negations (e. g. -e'!0' to "
+	printf("--exit-with-child, -e   Exit with the command. You can also specify a return code and negations (e. g. -e'!0' to "
 		   "exit only on errors)\n");
 	printf("\nIf your command should know the file the event occured on, use the {} placeholder when you specify the "
 		   "arguments (like xargs)\n");
@@ -527,7 +540,8 @@ static struct option long_options[] = {{"daemon", no_argument, 0, 'd'},
 									   {"ignore", required_argument, 0, 'i'},
 									   {"silent", no_argument, 0, 'q'},
 									   {"help", no_argument, 0, 'h'},
-									   {"exit-with-child", optional_argument, 0, 'e'}};
+									   {"exit-with-child", optional_argument, 0, 'e'},
+									   {0,0,0,0}};
 
 // fills global n_script_arguments and script_arguments var
 void fill_script_arguments(size_t n_args, char *args[])
@@ -538,13 +552,13 @@ void fill_script_arguments(size_t n_args, char *args[])
 
 	const char *argv0 = memrchr(prog, '/', strlen(prog));
 	argv0 = (argv0 == NULL) ? prog : argv0 + 1;
-	arguments[0] = argv0;
+	arguments[0] = xstrdup(argv0);
 
 	const int begin_offset = 1;
 	for(unsigned int i = 0; i < n_args; i++)
 	{
 		char *argument = args[i];
-		arguments[i + begin_offset] = strdup(argument);
+		arguments[i + begin_offset] = xstrdup(argument);
 	}
 	arguments[n_args + begin_offset] = NULL;
 
@@ -557,7 +571,7 @@ void parse_options(int argc, char **argv)
 	int option;
 	int option_index;
 	uint32_t optmask = 0;
-	while((option = getopt_long(argc, argv, "absdo:w:m:l:i:e::", long_options, &option_index)) != -1)
+	while((option = getopt_long(argc, argv, "absdo:w:m:i:e::", long_options, &option_index)) != -1)
 	{
 		switch(option)
 		{
@@ -571,7 +585,7 @@ void parse_options(int argc, char **argv)
 			optmask = name_to_mask(optarg);
 			if(optmask == 0)
 			{
-				logerror("Not supported inotify event: %s\n", optarg);
+				logerror("Unsupported inotify event: %s\n", optarg);
 				exit(EXIT_FAILURE);
 			}
 			mask |= optmask;
@@ -688,7 +702,7 @@ void wait_for_children()
 		}
 		if(p == -1)
 		{
-			logerror("waitpid failed when handling child exit\n");
+			logerror("waitpid() failed when handling child exit\n");
 			exit(EXIT_FAILURE);
 		}
 		int adhocify_exit_code = 0;
@@ -744,7 +758,6 @@ void start_monitoring(int ifd)
 		}
 		while(offset < len)
 		{
-
 			struct inotify_event *event = (struct inotify_event *)&buf[offset];
 			handle_event(event);
 			offset += sizeof(struct inotify_event) + event->len;
@@ -764,9 +777,10 @@ void child_handler(int signum, siginfo_t *info, void *context)
 
 void set_signals()
 {
-	struct sigaction action;
+	struct sigaction action = {0};
 	action.sa_flags = SA_NOCLDSTOP | SA_SIGINFO;
 	action.sa_sigaction = &child_handler;
+	sigemptyset(&action.sa_mask);
 	if(sigaction(SIGCHLD, &action, NULL) == -1)
 	{
 		logerror("Error when setting up the signal handler\n");
@@ -788,10 +802,10 @@ int main(int argc, char **argv)
 	parse_options(argc, argv);
 	process_options();
 
-	int ifd = inotify_init();
+	int ifd = inotify_init1(O_CLOEXEC);
 	if(ifd == -1)
 	{
-		perror("inotify_init");
+		perror("inotify_init1");
 		exit(EXIT_FAILURE);
 	}
 	create_watches(ifd, mask);
