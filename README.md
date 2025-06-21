@@ -83,13 +83,13 @@ File: /tmp/test Event: IN_CLOSE,IN_CLOSE_WRITE
 File: /tmp/test Event: IN_MODIFY
 
 ```
-A second shell ran
+In this example, another shell ran
 ```
 chmod 600 /tmp/test
 echo "test" >> /tmp/test
 ```
 
-Passing ```-q``` would also keep adhocify silent, surpressing those "Starting execution..." messages.
+Passing ```-q``` keeps adhocify silent, surpressing those "Starting execution..." messages.
 
 
 Other tools
@@ -103,7 +103,7 @@ Install
 ## Debian / Ubuntu
 Latest release can be installed using apt
 ```
-# First, obtain key, assume it's trusted.
+# First, obtain key. Here we just assume it's trustworhty.
 wget -O- https://repo.quitesimple.org/repo.quitesimple.org.asc  | gpg --dearmor > repo.quitesimple.org-keyring.gpg
 cat repo.quitesimple.org-keyring.gpg | sudo tee -a /usr/share/keyrings/repo.quitesimple.org.gpg > /dev/null
 
