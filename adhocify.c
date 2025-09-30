@@ -311,6 +311,11 @@ const char *mask_to_names(int mask)
 	{
 			ret[pos-1] = '\0';
 	}
+	else
+	{
+		logerror("Failed to convert mask to string: %s", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	return xstrdup(ret);
 }
 
