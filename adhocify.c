@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2024 Albert S. <adhocify@quitesimple.org>
+ * Copyright (c) 2014-2025 Albert S. <adhocify@quitesimple.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -515,7 +515,10 @@ static inline char *get_cwd()
 
 void print_usage()
 {
-	printf("adhocify [OPTIONS] command [arguments for command] - Monitor for inotify events and launch commands\n\n");
+	printf("adhocify [OPTIONS] command [arguments for command] - Monitor for inotify events and launch commands\n");
+	printf("Version: %s\n\n", GIT_TAG);
+
+	printf("--version, -V           print version and exit\n");
 	printf("--daemon, -d            run as a daemon\n");
 	printf("--path, -w              adds the specified path to the watchlist\n");
 	printf("--logfile, -o           path to write output of adhocify and stdout/stderr of launched commands to\n");
@@ -540,6 +543,7 @@ static struct option long_options[] = {{"daemon", no_argument, 0, 'd'},
 									   {"mask", required_argument, 0, 'm'},
 									   {"path", required_argument, 0, 'w'},
 									   {"no-env", no_argument, 0, 'a'},
+									   {"version", no_argument, 0, 'V'},
 									   {"stdin", no_argument, 0, 's'},
 									   {"no-forkbomb-check", no_argument, 0, 'b'},
 									   {"ignore", required_argument, 0, 'i'},
@@ -576,10 +580,14 @@ void parse_options(int argc, char **argv)
 	int option;
 	int option_index;
 	uint32_t optmask = 0;
-	while((option = getopt_long(argc, argv, "absdo:w:m:i:e::", long_options, &option_index)) != -1)
+	while((option = getopt_long(argc, argv, "absdVo:w:m:i:e::", long_options, &option_index)) != -1)
 	{
 		switch(option)
 		{
+		case 'V':
+			printf("%s\n", GIT_TAG);
+			exit(EXIT_SUCCESS);
+			break;
 		case 'd':
 			daemonize = true;
 			break;
