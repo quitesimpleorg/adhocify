@@ -160,11 +160,6 @@ bool path_is_directory(const char *path)
 	return S_ISDIR(sb.st_mode);
 }
 
-static inline bool file_exists(const char *path)
-{
-	return access(path, F_OK) == 0;
-}
-
 void add_to_ignore_list(const char *str)
 {
 	*ignorelist_current = xmalloc(sizeof(struct ignorelist));
