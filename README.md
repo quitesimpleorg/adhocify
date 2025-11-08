@@ -4,11 +4,7 @@ What is adhocify?
 adhocify uses inotify to watch for file system events. Once an event 
 occurs it can execute a command. The path of the file and the event
 will be passed to that command.
- 
 
-Options
-=======
-See adhocify --help.
 
 Examples:
 =========
@@ -91,6 +87,9 @@ echo "test" >> /tmp/test
 
 Passing ```-q``` keeps adhocify silent, surpressing those "Starting execution..." messages.
 
+Options
+=======
+See adhocify --help.
 
 Other tools
 ===========
@@ -102,7 +101,7 @@ Install
 
 ## Debian / Ubuntu
 
-Please [read this](https://quitesimple.org/page/repositories) before using those instructions 
+Please [read this](https://quitesimple.org/page/repositories) before using those instructions. 
 Latest release can be installed using apt
 ```
 # First, obtain the key. Here we just assume it's trustworthy...
