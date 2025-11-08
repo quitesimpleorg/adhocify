@@ -667,6 +667,7 @@ void process_options()
 
 	if(watchlist_head == NULL)
 	{
+		logwrite("Info: Watching current dir (no -w provided)\n");
 		watchqueue_add_path(get_cwd());
 	}
 
