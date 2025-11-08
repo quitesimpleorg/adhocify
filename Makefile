@@ -2,7 +2,7 @@ prefix = /usr/local
 bindir = $(prefix)/bin
 CFLAGS = -std=c99 -Wall -Wextra -pedantic
 
-VERSIONFALLBACK = "v1.2+"
+VERSIONFALLBACK = "v1.3+"
 VERSIONFLAGS = -DGIT_TAG=\"$(shell git describe --tags HEAD || echo $(VERSIONFALLBACK))\"
 
 all:
