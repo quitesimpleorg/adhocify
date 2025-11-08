@@ -637,6 +637,9 @@ void parse_options(int argc, char **argv)
 				awaited_child_exit_code = atoi(optarg);
 			}
 			break;
+		case '?':
+			logerror("Invalid option provided. Exiting\n");
+			exit(EXIT_FAILURE);
 		}
 	}
 
