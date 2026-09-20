@@ -1,13 +1,10 @@
-What is adhocify?
-=================
-
+# adhocify
 adhocify uses inotify to watch for file system events. Once an event 
 occurs it can execute a command. The path of the file and the event
 will be passed to that command.
 
 
-Examples:
-=========
+## Examples
 ```
 adhocify -w /tmp/ /home/user/myscript.sh
 ```
@@ -87,47 +84,16 @@ echo "test" >> /tmp/test
 
 Passing ```-q``` keeps adhocify silent, surpressing those "Starting execution..." messages.
 
-Options
-=======
-See adhocify --help.
+### Options
+See `adhocify --help`.
 
-Other tools
-===========
+## Install
+The commands below install the adhocify binary to /usr/local/bin
+```
+make
+sudo make install
+```
+
+## Other tools
 If adhocify does not suit your needs, take a look at:
   * inotify-tools: https://github.com/inotify-tools/inotify-tools/wiki
-
-Install
-=======
-
-## Debian / Ubuntu
-
-Please [read this](https://quitesimple.org/page/repositories) before using those instructions. 
-Latest release can be installed using apt
-```
-# First, obtain the key. Here we just assume it's trustworthy...
-wget -O- https://repo.quitesimple.org/repo.quitesimple.org.asc  | gpg --dearmor > repo.quitesimple.org-keyring.gpg
-cat repo.quitesimple.org-keyring.gpg | sudo tee -a /usr/share/keyrings/repo.quitesimple.org.gpg > /dev/null
-
-#For Ubuntu/Debian
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/repo.quitesimple.org.gpg] https://repo.quitesimple.org/debian/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/quitesimple.list
-
-
-sudo apt-get update
-sudo apt-get install adhocify
-```
-
-## Alpine
-```
-wget https://repo.quitesimple.org/repo%40quitesimple.org-5f3d101.rsa.pub -O /etc/apk/repo@quitesimple.org-5f3d101.rsa.pub
-echo "https://repo.quitesimple.org/alpine/quitesimple/" >> /etc/apk/repositories
-apk update
-apk add adhocify
-```
-
-## Other
-To install from source, run 
-```
-make install
-```
-
-which will place adhocify in /usr/local/bin/
